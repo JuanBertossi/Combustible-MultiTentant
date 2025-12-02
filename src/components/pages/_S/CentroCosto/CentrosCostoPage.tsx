@@ -26,7 +26,7 @@ import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useAuth } from "@/components/providers/auth/auth-provider";
+import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
 import * as XLSX from "xlsx";
 
@@ -84,7 +84,7 @@ const mockCentrosCosto: CentroCosto[] = [
 ];
 
 export default function CentroCostoPage() {
-  const { user } = useAuth();
+  const { user } = useTenantAuth();
   const { id: tenantId, name: tenantName } = useTenantContext();
   const [items, setItems] = useState<CentroCosto[]>(mockCentrosCosto);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

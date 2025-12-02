@@ -1,7 +1,8 @@
-// components/pages/auth/LoginPage.tsx
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router";
-import { useAuth } from "@/components/providers/auth/auth-provider";
+// src/components/pages/_S/Login/LoginPage.tsx
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider";
+import { useTenant } from "@/components/providers/tenants/tenant-provider"; 
 import {
   Box,
   Card,
@@ -11,23 +12,28 @@ import {
   Typography,
   Container,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 
 export default function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login } = useTenantAuth();
+  const { tenant, tenantSlug, loading: loadingTenant } = useTenant();
   const navigate = useNavigate();
+  
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Si ya está autenticado, redirigir a /s
-  if (isAuthenticated) {
-    return <Navigate to="/s" replace />;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/s", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -40,39 +46,52 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
+      console.log("🔐 Intentando login en tenant:", tenantSlug);
       await login({ email, password });
-      
-      const userStr = localStorage.getItem("user");
-      if (!userStr) {
-        throw new Error("Error al obtener usuario");
-      }
-      
-      const user = JSON.parse(userStr);
-      const domain = import.meta.env.VITE_APP_DOMAIN || "localhost";
-      const port = import.meta.env.VITE_APP_PORT || "5177";
-
-      console.log("👤 Usuario logueado:", user);
-
-      if (domain === "localhost") {
-        if (user.empresaSubdomain) {
-          // Codificar usuario en base64 para pasar en URL
-          const userToken = btoa(JSON.stringify(user));
-          const targetUrl = `http://${user.empresaSubdomain}.${domain}:${port}/s?auth=${userToken}`;
-          console.log("🚀 Redirigiendo a:", targetUrl);
-          window.location.href = targetUrl;
-          return;
-        } else {
-          console.log("🔑 SuperAdmin: ir a localhost/s");
-          navigate("/s");
-        }
-      }
-    } catch (err) {
+      console.log("✅ Login exitoso, redirigiendo a /s");
+      navigate("/s");
+    } catch (err: any) {
       console.error("❌ Error login:", err);
-      setError("Credenciales inválidas. Prueba con admin@empresaA.com");
+      setError(err.message || "Credenciales inválidas");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Loading mientras detecta el tenant
+  if (loadingTenant) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Si no hay tenant detectado
+  if (!tenantSlug) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          p: 3,
+        }}
+      >
+        <Alert severity="error">
+          No se pudo detectar el subdominio. Asegurate de estar en empresaA.localhost:5177
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -111,7 +130,7 @@ export default function LoginPage() {
         >
           <Box
             sx={{
-              bgcolor: "#1E2C56",
+              bgcolor: tenant?.primaryColor || "#1E2C56",
               py: 2.5,
               px: 3,
               textAlign: "center",
@@ -124,7 +143,7 @@ export default function LoginPage() {
                 height: 50,
                 margin: "0 auto 10px",
                 borderRadius: "50%",
-                bgcolor: "#4A90E2",
+                bgcolor: tenant?.secondaryColor || "#4A90E2",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -138,7 +157,7 @@ export default function LoginPage() {
               fontWeight="700"
               sx={{ mb: 0.5, letterSpacing: 0.3 }}
             >
-              Fuel Manager
+              {tenant?.name || "Fuel Manager"}
             </Typography>
             <Typography
               variant="caption"
@@ -164,7 +183,7 @@ export default function LoginPage() {
               </Typography>
               <TextField
                 fullWidth
-                placeholder="admin@empresaA.com"
+                placeholder={`admin@${tenant?.domain || "empresa.com"}`}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -194,7 +213,7 @@ export default function LoginPage() {
                       borderColor: "#4A90E2",
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: "#1E2C56",
+                      borderColor: tenant?.primaryColor || "#1E2C56",
                       borderWidth: 2,
                     },
                   },
@@ -244,7 +263,7 @@ export default function LoginPage() {
                       borderColor: "#4A90E2",
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: "#1E2C56",
+                      borderColor: tenant?.primaryColor || "#1E2C56",
                       borderWidth: 2,
                     },
                   },
@@ -272,14 +291,14 @@ export default function LoginPage() {
                 disabled={isLoading}
                 sx={{
                   py: 1.4,
-                  bgcolor: "#1E2C56",
+                  bgcolor: tenant?.primaryColor || "#1E2C56",
                   fontWeight: "600",
                   textTransform: "none",
                   fontSize: "1rem",
                   borderRadius: 1.5,
                   boxShadow: "0 4px 12px rgba(30, 44, 86, 0.3)",
                   "&:hover": {
-                    bgcolor: "#253661",
+                    bgcolor: tenant?.secondaryColor || "#253661",
                     transform: "translateY(-2px)",
                     boxShadow: "0 6px 20px rgba(30, 44, 86, 0.4)",
                   },
@@ -302,7 +321,7 @@ export default function LoginPage() {
                   color: "#666",
                 }}
               >
-                Prueba: admin@empresaA.com o superadmin@fuel.com
+                Tenant: <strong>{tenantSlug}</strong>
               </Typography>
             </form>
           </CardContent>

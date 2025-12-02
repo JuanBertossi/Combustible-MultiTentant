@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/providers/auth/auth-provider";
+import { useAuth } from "@/components/providers/auth/_A/AdminAuthProvider";
 type PeriodoType = "semana" | "mes" | "trimestre" | "anio";
 
 interface ConsumoMensualData {

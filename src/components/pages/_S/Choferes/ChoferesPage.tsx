@@ -26,7 +26,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useAuth } from "@/components/providers/auth/auth-provider";
+import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
 import * as XLSX from "xlsx";
 
@@ -82,7 +82,7 @@ const mockChoferes: Chofer[] = [
 ];
 
 export default function ChoferesPage() {
-  const { user } = useAuth();
+  const { user } = useTenantAuth();
   const { id: tenantId, name: tenantName } = useTenantContext();
   const [choferes, setChoferes] = useState<Chofer[]>(mockChoferes);
   const [loading, setLoading] = useState<boolean>(false);

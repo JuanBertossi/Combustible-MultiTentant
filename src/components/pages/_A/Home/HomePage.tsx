@@ -1,6 +1,5 @@
-// src/components/pages/_A/Home/HomePage.tsx
-import LoginPage from "../../auth/LoginPage";
+import EmpresasPage from "../Empresas/EmpresasPage";
 
 export default function HomePage() {
-  return <LoginPage />;
+  return <EmpresasPage />;
 }

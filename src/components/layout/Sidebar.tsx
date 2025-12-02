@@ -1,4 +1,3 @@
-// components/layout/Sidebar.tsx
 import { useState } from "react";
 import {
   List,
@@ -12,7 +11,7 @@ import {
   Divider,
   Collapse,
 } from "@mui/material";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate, useLocation } from "react-router-dom";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -28,8 +27,8 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PropaneTankIcon from "@mui/icons-material/PropaneTank";
-import { useAuth } from "@/components/providers/auth/auth-provider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
+import { useTenant } from "../providers/tenants/tenant-provider";
 
 const DRAWER_WIDTH = 260;
 
@@ -142,8 +141,10 @@ const menuStructure: MenuItem[] = [
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const { name } = useTenantContext();
+  const { user } = useTenantAuth ();
+  const { tenant } = useTenant();
+  const name = tenant?.name;
+
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const handleMenuClick = (label: string) => {
@@ -153,13 +154,12 @@ export default function Sidebar() {
     }));
   };
 
-  const isActive = (path: string | undefined) => {
+  const isActive = (path?: string) => {
     if (!path) return false;
     return location.pathname === path;
   };
 
   const hasAccess = (roles: UserRole[]) => {
-    if (!roles) return true;
     return roles.includes(user?.role as UserRole);
   };
 
@@ -182,9 +182,11 @@ export default function Sidebar() {
     >
       <Box sx={{ p: 3, textAlign: "center" }}>
         <LocalGasStationIcon sx={{ fontSize: 40, color: "#4A90E2", mb: 1 }} />
+
         <Typography variant="h6" fontWeight="bold">
           Fuel Manager
         </Typography>
+
         <Typography
           variant="caption"
           sx={{ color: "rgba(255, 255, 255, 0.6)" }}
@@ -222,19 +224,17 @@ export default function Sidebar() {
                     >
                       {item.icon}
                     </ListItemIcon>
+
                     <ListItemText
                       primary={item.label}
                       primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
                     />
+
                     {openMenus[item.label] ? <ExpandLess /> : <ExpandMore />}
                   </ListItemButton>
                 </ListItem>
 
-                <Collapse
-                  in={openMenus[item.label]}
-                  timeout="auto"
-                  unmountOnExit
-                >
+                <Collapse in={openMenus[item.label]} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
                     {filteredSubmenu.map((subItem) => (
                       <ListItem
@@ -266,6 +266,7 @@ export default function Sidebar() {
                           >
                             {subItem.icon}
                           </ListItemIcon>
+
                           <ListItemText
                             primary={subItem.label}
                             primaryTypographyProps={{
@@ -306,6 +307,7 @@ export default function Sidebar() {
                 >
                   {item.icon}
                 </ListItemIcon>
+
                 <ListItemText
                   primary={item.label}
                   primaryTypographyProps={{

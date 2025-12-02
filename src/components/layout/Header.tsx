@@ -18,14 +18,14 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { useAuth } from "@/components/providers/auth/auth-provider";
-import { useNavigate } from "react-router";
+import { useTenantAuth } from "../providers/auth/_S/TenantAuthProvider";
+import { useNavigate } from "react-router-dom";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
 
 type UserRole = "admin" | "superadmin";
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, logout } = useTenantAuth();
   const { name: tenantName } = useTenantContext();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -39,11 +39,7 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    logout();
-    const domain = import.meta.env.VITE_APP_DOMAIN || "localhost";
-    const port = import.meta.env.VITE_APP_PORT || "5177";
-    const loginUrl = `http://${domain}${domain === "localhost" ? `:${port}` : ""}/a`;
-    window.location.href = loginUrl;
+    logout(); 
   };
 
   const getAvatarColor = (nombre: string | undefined): string => {

@@ -1,14 +1,11 @@
-// routes/_TenantRoutes/tenant-routes.tsx
-import SubdomainGuard from "@/components/guards/subdomain.guard";
-import { AuthGuard } from "@/components/guards/auth.guard";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import HomePage from "@/components/pages/_S/Home/HomePage";
-import DashboardPage from "@/components/pages/_S/Dashboard/DashboardPage";
 import { type RouteObject } from "react-router";
-
-// Importar las páginas existentes
+import { TenantAuthGuard } from "@/components/guards/tenant-auth.guard";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import LoginPage from "@/components/pages/_S/Login/LoginPage";
+import HomePage from "@/components/pages/_S/Home/HomePage"; 
+import { Navigate } from "react-router-dom";
 import ChoferesPage from "@/components/pages/_S/Choferes/ChoferesPage";
-import CentroCostoPage from "@/components/pages/_S/CentroCosto/CentrosCostoPage"; // Ensure the correct filename
+import CentroCostoPage from "@/components/pages/_S/CentroCosto/CentrosCostoPage";
 import ConfiguracionPage from "@/components/pages/_S/Configuracion/ConfiguracionPage";
 import DemoPage from "@/components/pages/_S/Demo/DemoPage";
 import EmpresasPage from "@/components/pages/_S/Empresas/EmpresasPage";
@@ -22,17 +19,19 @@ import VehiculosPage from "@/components/pages/_S/Vehiculos/VehiculosPage";
 
 export const tenantRoutes: RouteObject[] = [
   {
+    path: "/s/login",
+    element: <LoginPage />,
+  },
+  {
     path: "/s",
     element: (
-      <AuthGuard>
-        <SubdomainGuard type="subdomain">
-          <DashboardLayout />
-        </SubdomainGuard>
-      </AuthGuard>
+      <TenantAuthGuard>
+        <DashboardLayout />
+      </TenantAuthGuard>
     ),
     children: [
-      { path: "", element: <HomePage /> },
-      { path: "dashboard", element: <DashboardPage /> },
+      { index: true, element: <Navigate to="/s/dashboard" replace /> },
+      { path: "dashboard", element: <HomePage /> }, 
       { path: "vehiculos", element: <VehiculosPage /> },
       { path: "choferes", element: <ChoferesPage /> },
       { path: "centro-costo", element: <CentroCostoPage /> },

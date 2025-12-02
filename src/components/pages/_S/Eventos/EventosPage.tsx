@@ -27,7 +27,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import * as XLSX from "xlsx";
-import { useAuth } from "@/components/providers/auth/auth-provider";
+import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
 
 // Tipos
@@ -109,7 +109,7 @@ const mockSurtidores = [
 ];
 
 export default function EventosPage() {
-  const { user } = useAuth();
+  const { user } = useTenantAuth();
   const { id: tenantId } = useTenantContext();
   const [eventos, setEventos] = useState<EventoExtended[]>([]);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

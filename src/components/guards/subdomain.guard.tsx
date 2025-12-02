@@ -11,6 +11,5 @@ export default function SubdomainGuard({ type, children }: SubdomainGuardProps) 
 
   console.log("🔒 SubdomainGuard:", { subdomain, type, url: window.location.href });
 
-  // NO redirigir, solo dejar pasar
   return <>{children}</>;
 }
