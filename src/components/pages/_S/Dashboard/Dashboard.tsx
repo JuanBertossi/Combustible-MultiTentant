@@ -34,7 +34,7 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import WarningIcon from "@mui/icons-material/Warning";
 
 type PeriodoType = "semana" | "mes" | "trimestre" | "anio";
-
+//
 interface ConsumoMensualData {
   mes: string;
   litros: number;
