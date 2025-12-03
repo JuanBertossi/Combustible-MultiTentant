@@ -1,8 +1,8 @@
 import { type RouteObject } from "react-router";
 import { TenantAuthGuard } from "@/components/guards/tenant-auth.guard";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/pages/_S/Layout/DashboardLayout";
 import LoginPage from "@/components/pages/_S/Login/LoginPage";
-import HomePage from "@/components/pages/_S/Home/HomePage"; 
+import Dashboard from "@/components/pages/_S/Dashboard/Dashboard"; 
 import { Navigate } from "react-router-dom";
 import ChoferesPage from "@/components/pages/_S/Choferes/ChoferesPage";
 import CentroCostoPage from "@/components/pages/_S/CentroCosto/CentrosCostoPage";
@@ -31,7 +31,7 @@ export const tenantRoutes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <Navigate to="/s/dashboard" replace /> },
-      { path: "dashboard", element: <HomePage /> }, 
+      { path: "dashboard", element: <Dashboard /> }, 
       { path: "vehiculos", element: <VehiculosPage /> },
       { path: "choferes", element: <ChoferesPage /> },
       { path: "centro-costo", element: <CentroCostoPage /> },

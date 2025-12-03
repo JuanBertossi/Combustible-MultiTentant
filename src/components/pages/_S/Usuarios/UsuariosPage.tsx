@@ -11,7 +11,6 @@ import {
   MenuItem,
   Typography,
   InputAdornment,
-  Grid,
   Card,
   CardContent,
   Avatar,
@@ -19,6 +18,7 @@ import {
   IconButton,
   LinearProgress,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import PersonIcon from "@mui/icons-material/Person";
@@ -57,9 +57,9 @@ interface FormErrors {
   [key: string]: string;
 }
 
-const ROLES: UserRole[] = ["superadmin", "admin", "supervisor", "operator", "auditor"];
+const ROLES: UserRole[] = ["admin", "supervisor", "operator", "auditor"];
 
-// Helper functions
+// Helpers
 const getInitials = (nombre: string, apellido?: string): string => {
   const first = nombre?.charAt(0) ?? "";
   const second = apellido?.charAt(0) ?? "";
@@ -67,7 +67,14 @@ const getInitials = (nombre: string, apellido?: string): string => {
 };
 
 const getAvatarColor = (name: string): string => {
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+  const colors = [
+    "#3b82f6",
+    "#10b981",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#06b6d4",
+  ];
   const index = name.charCodeAt(0) % colors.length;
   return colors[index] ?? "#999";
 };
@@ -122,7 +129,7 @@ const mockUsuarios: Usuario[] = [
 
 export default function UsuariosPage() {
   const { user } = useTenantAuth();
-  const { id: tenantId, name: tenantName } = useTenantContext();
+  const { name: tenantName } = useTenantContext(); // no usamos id para no romper
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
@@ -143,8 +150,6 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Aquí irá la llamada al servicio
-      // const data = await usuarioService.getAll();
       await new Promise((resolve) => setTimeout(resolve, 500));
       setUsuarios(mockUsuarios);
       setLoading(false);
@@ -152,12 +157,14 @@ export default function UsuariosPage() {
     fetchData();
   }, []);
 
-  const usuariosPorEmpresa = usuarios.filter((u) => u.empresaId === tenantId);
+  // Mientras mockeás, no filtres por tenantId
+  const usuariosPorEmpresa = usuarios;
   const filteredUsuarios = usuariosPorEmpresa.filter((u) => {
+    const term = searchTerm.toLowerCase();
     const matchSearch =
-      u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.apellido && u.apellido.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      u.nombre.toLowerCase().includes(term) ||
+      (u.apellido && u.apellido.toLowerCase().includes(term)) ||
+      u.email.toLowerCase().includes(term);
     const matchRol = filterRol === "Todos" || u.rol === filterRol;
     return matchSearch && matchRol;
   });
@@ -175,7 +182,10 @@ export default function UsuariosPage() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Usuarios");
-    XLSX.writeFile(wb, `Usuarios_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Usuarios_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   const handleNew = (): void => {
@@ -209,13 +219,17 @@ export default function UsuariosPage() {
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
     if (!formData.nombre.trim()) newErrors.nombre = "El nombre es obligatorio";
-    if (!formData.apellido.trim()) newErrors.apellido = "El apellido es obligatorio";
+    if (!formData.apellido.trim())
+      newErrors.apellido = "El apellido es obligatorio";
     if (!formData.email.trim()) {
       newErrors.email = "El email es obligatorio";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email inválido";
     }
-    if (formData.whatsapp && !/^\+?\d{10,15}$/.test(formData.whatsapp.replace(/\s/g, ""))) {
+    if (
+      formData.whatsapp &&
+      !/^\+?\d{10,15}$/.test(formData.whatsapp.replace(/\s/g, ""))
+    ) {
       newErrors.whatsapp = "Formato inválido (ej: +5493512345678)";
     }
     if (!formData.rol) newErrors.rol = "El rol es obligatorio";
@@ -237,7 +251,7 @@ export default function UsuariosPage() {
         const newUsuario: Usuario = {
           id: Math.max(...usuarios.map((u) => u.id), 0) + 1,
           ...formData,
-          empresaId: tenantId || 0,
+          empresaId: 1,
           empresaNombre: tenantName,
         };
         setUsuarios([...usuarios, newUsuario]);
@@ -270,132 +284,164 @@ export default function UsuariosPage() {
   }
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Box
+    <Box sx={{ p: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mt: -3,
+          mb: 1.5,
+        }}
+      >
+        <Typography
+          variant="h5"
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            mb: 3,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: "-0.5px",
           }}
         >
-          <Box>
-            <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
-              Usuarios del Sistema
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Gestión de accesos al frontoffice web • {filteredUsuarios.length}{" "}
-              {filteredUsuarios.length === 1 ? "usuario" : "usuarios"}
-            </Typography>
-          </Box>
-        </Box>
+          Gestión de accesos • {filteredUsuarios.length}{" "}
+          {filteredUsuarios.length === 1 ? "usuario" : "usuarios"}
+        </Typography>
 
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            flexWrap: "wrap",
-            alignItems: "center",
-            bgcolor: "white",
-            p: 2.5,
-            borderRadius: 2,
-            border: "1px solid #e0e0e0",
-          }}
-        >
-          <TextField
-            placeholder="Buscar por nombre, apellido o email..."
-            size="small"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ flexGrow: 1, minWidth: 250 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: "#999" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField
-            select
-            size="small"
-            label="Rol"
-            value={filterRol}
-            onChange={(e) => setFilterRol(e.target.value)}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="Todos">Todos los roles</MenuItem>
-            {ROLES.map((rol) => (
-              <MenuItem key={rol} value={rol}>
-                {getRolLabel(rol)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Button
-            variant="outlined"
-            startIcon={<FileDownloadIcon />}
-            onClick={handleExport}
-            disabled={filteredUsuarios.length === 0}
-            sx={{
-              borderColor: "#10b981",
-              color: "#10b981",
-              fontWeight: 600,
-              "&:hover": { borderColor: "#059669", bgcolor: "#10b98110" },
-            }}
-          >
-            Exportar
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNew}
-            sx={{
-              bgcolor: "#1E2C56",
-              fontWeight: 600,
-              "&:hover": { bgcolor: "#16213E" },
-            }}
-          >
-            Nuevo Usuario
-          </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExport}
+              disabled={filteredUsuarios.length === 0}
+              sx={{
+                borderColor: "#10b981",
+                color: "#10b981",
+                fontWeight: 600,
+                textTransform: "none",
+                "&:hover": { borderColor: "#059669", bgcolor: "#10b98110" },
+              }}
+            >
+              Exportar
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleNew}
+              sx={{
+                bgcolor: "#1E2C56",
+                fontWeight: 600,
+                textTransform: "none",
+                "&:hover": { bgcolor: "#16213E" },
+              }}
+            >
+              Nuevo usuario
+            </Button>
+          </Box>
         </Box>
       </Box>
 
+      {/* Filtros */}
+      <Box
+        sx={{
+          mb: 3,
+          background: "white",
+          borderRadius: 2,
+          border: "1px solid #e2e8f0",
+          p: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          alignItems: "center",
+        }}
+      >
+        <TextField
+          placeholder="Buscar por nombre, apellido o email..."
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ flexGrow: 1, minWidth: 220 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: "#9ca3af" }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <TextField
+          select
+          size="small"
+          label="Rol"
+          value={filterRol}
+          onChange={(e) => setFilterRol(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="Todos">Todos los roles</MenuItem>
+          {ROLES.map((rol) => (
+            <MenuItem key={rol} value={rol}>
+              {getRolLabel(rol)}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+
+      {/* Grid usuarios */}
       <Grid container spacing={3}>
         {filteredUsuarios.map((usuario) => (
-          <Grid item xs={12} sm={6} md={4} key={usuario.id}>
+          <Grid item component="div" xs={12} sm={6} md={4} key={usuario.id}>
             <Card
               elevation={0}
               sx={{
-                border: "1px solid #e0e0e0",
-                borderRadius: 2,
+                background: "white",
+                borderRadius: 3,
+                border: "1px solid #e2e8f0",
                 height: "100%",
-                transition: "all 0.3s",
+                transition: "all 0.25s ease",
                 "&:hover": {
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                  transform: "translateY(-2px)",
+                  boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
+                  transform: "translateY(-3px)",
+                  borderColor: "#cbd5f5",
                 },
               }}
             >
-              <CardContent sx={{ p: 2.5 }}>
-                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+              <CardContent sx={{ p: 3 }}>
+                {/* Header usuario */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    mb: 2.5,
+                    gap: 1.5,
+                  }}
+                >
                   <Avatar
                     sx={{
-                      width: 56,
-                      height: 56,
+                      width: 52,
+                      height: 52,
                       bgcolor: getAvatarColor(usuario.nombre),
                       fontSize: 20,
                       fontWeight: 700,
-                      mr: 2,
                     }}
                   >
                     {getInitials(usuario.nombre, usuario.apellido)}
                   </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" fontWeight="700" sx={{ mb: 0.5 }}>
+
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 700,
+                        mb: 0.5,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {usuario.nombre} {usuario.apellido || ""}
                     </Typography>
-                    <Box sx={{ display: "flex", gap: 0.5 }}>
+
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                       <Chip
                         label={getRolLabel(usuario.rol)}
                         size="small"
@@ -403,7 +449,7 @@ export default function UsuariosPage() {
                           bgcolor: getRolColor(usuario.rol).bg,
                           color: getRolColor(usuario.rol).color,
                           fontWeight: 600,
-                          height: 20,
+                          height: 22,
                           fontSize: 11,
                         }}
                       />
@@ -411,19 +457,55 @@ export default function UsuariosPage() {
                         label={usuario.activo ? "Activo" : "Inactivo"}
                         size="small"
                         sx={{
-                          bgcolor: usuario.activo ? "#10b98115" : "#99999915",
-                          color: usuario.activo ? "#10b981" : "#999",
+                          bgcolor: usuario.activo ? "#10b98115" : "#e5e7eb",
+                          color: usuario.activo ? "#10b981" : "#6b7280",
                           fontWeight: 600,
-                          height: 20,
+                          height: 22,
                           fontSize: 11,
                         }}
                       />
                     </Box>
                   </Box>
+
+                  {/* Acciones separadas visualmente */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                      ml: 0.5,
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(usuario)}
+                      sx={{
+                        bgcolor: "#eef2ff",
+                        color: "#1d4ed8",
+                        "&:hover": { bgcolor: "#e0e7ff" },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(usuario)}
+                      sx={{
+                        bgcolor: "#fee2e2",
+                        color: "#dc2626",
+                        "&:hover": { bgcolor: "#fecaca" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ mb: 1.5 }}>
+                {/* Detalles con más separación */}
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1.75 }}
+                >
+                  <Box>
                     <Typography
                       variant="caption"
                       color="text.secondary"
@@ -433,71 +515,62 @@ export default function UsuariosPage() {
                     </Typography>
                     <Typography
                       variant="body2"
-                      fontWeight="600"
+                      fontWeight={600}
                       sx={{ wordBreak: "break-word" }}
                     >
                       {usuario.email}
                     </Typography>
                   </Box>
+
                   {usuario.whatsapp && (
-                    <Box sx={{ mb: 1.5 }}>
+                    <Box>
                       <Typography
                         variant="caption"
                         color="text.secondary"
                         sx={{ display: "block", mb: 0.3 }}
                       >
-                        WhatsApp (opcional)
+                        WhatsApp
                       </Typography>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <PhoneAndroidIcon sx={{ fontSize: 16, color: "#10b981" }} />
-                        <Typography variant="body2" fontWeight="600">
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        <PhoneAndroidIcon
+                          sx={{ fontSize: 18, color: "#10b981" }}
+                        />
+                        <Typography variant="body2" fontWeight={600}>
                           {usuario.whatsapp}
                         </Typography>
                       </Box>
                     </Box>
                   )}
-                  {user?.role === "superadmin" && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mb: 2 }}
-                    >
-                      Empresa: {usuario.empresaNombre || "N/A"}
-                    </Typography>
-                  )}
-                </Box>
 
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEdit(usuario)}
-                    sx={{
-                      bgcolor: "#e5e7eb",
-                      color: "#374151",
-                      "&:hover": { bgcolor: "#d1d5db" },
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(usuario)}
-                    sx={{
-                      bgcolor: "#fee2e2",
-                      color: "#dc2626",
-                      "&:hover": { bgcolor: "#fecaca" },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  {user?.role === "superadmin" && (
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", mb: 0.3 }}
+                      >
+                        Empresa
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>
+                        {usuario.empresaNombre || "N/A"}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </CardContent>
             </Card>
           </Grid>
         ))}
+
         {filteredUsuarios.length === 0 && (
           <Box sx={{ textAlign: "center", py: 8, width: "100%" }}>
-            <PersonIcon sx={{ fontSize: 64, color: "#ddd", mb: 2 }} />
+            <PersonIcon sx={{ fontSize: 64, color: "#e5e7eb", mb: 2 }} />
             <Typography variant="h6" color="text.secondary">
               No hay usuarios registrados
             </Typography>
@@ -505,15 +578,25 @@ export default function UsuariosPage() {
         )}
       </Grid>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
+      {/* Dialog crear / editar */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
             <TextField
               fullWidth
               label="Nombre"
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
               error={!!errors.nombre}
               helperText={errors.nombre}
               required
@@ -522,7 +605,9 @@ export default function UsuariosPage() {
               fullWidth
               label="Apellido"
               value={formData.apellido}
-              onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, apellido: e.target.value })
+              }
               error={!!errors.apellido}
               helperText={errors.apellido}
               required
@@ -532,7 +617,9 @@ export default function UsuariosPage() {
               type="email"
               label="Email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
               error={!!errors.email}
               helperText={errors.email}
               required
@@ -542,9 +629,13 @@ export default function UsuariosPage() {
               label="Número WhatsApp (opcional)"
               placeholder="+5493512345678"
               value={formData.whatsapp}
-              onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, whatsapp: e.target.value })
+              }
               error={!!errors.whatsapp}
-              helperText={errors.whatsapp || "Formato: +54 9 351 234 5678 (opcional)"}
+              helperText={
+                errors.whatsapp || "Formato: +54 9 351 234 5678 (opcional)"
+              }
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -558,7 +649,9 @@ export default function UsuariosPage() {
               select
               label="Rol"
               value={formData.rol}
-              onChange={(e) => setFormData({ ...formData, rol: e.target.value as UserRole })}
+              onChange={(e) =>
+                setFormData({ ...formData, rol: e.target.value as UserRole })
+              }
               error={!!errors.rol}
               helperText={errors.rol}
               required
@@ -573,7 +666,9 @@ export default function UsuariosPage() {
               <Typography variant="body2">Activo</Typography>
               <Button
                 variant={formData.activo ? "contained" : "outlined"}
-                onClick={() => setFormData({ ...formData, activo: !formData.activo })}
+                onClick={() =>
+                  setFormData({ ...formData, activo: !formData.activo })
+                }
               >
                 {formData.activo ? "Sí" : "No"}
               </Button>
@@ -588,7 +683,11 @@ export default function UsuariosPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+      {/* Dialog eliminar */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>

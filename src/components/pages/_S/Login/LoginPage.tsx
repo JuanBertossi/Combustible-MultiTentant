@@ -1,8 +1,7 @@
-// src/components/pages/_S/Login/LoginPage.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider";
-import { useTenant } from "@/components/providers/tenants/tenant-provider"; 
+import { useTenant } from "@/components/providers/tenants/tenant-provider";
 import {
   Box,
   Card,
@@ -22,20 +21,23 @@ export default function LoginPage() {
   const { isAuthenticated, login } = useTenantAuth();
   const { tenant, tenantSlug, loading: loadingTenant } = useTenant();
   const navigate = useNavigate();
-  
+
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const primaryColor = "#1E2C56";
+  const secondaryColor = "#4A90E2";
 
-  // Si ya está autenticado, redirigir a /s
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/s", { replace: true });
+      navigate("/s/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
     e.preventDefault();
     setError("");
 
@@ -46,19 +48,18 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      console.log("🔐 Intentando login en tenant:", tenantSlug);
+      console.log("Intentando login en tenant:", tenantSlug);
       await login({ email, password });
-      console.log("✅ Login exitoso, redirigiendo a /s");
+      console.log("Login exitoso, redirigiendo a /s");
       navigate("/s");
-    } catch (err: any) {
-      console.error("❌ Error login:", err);
-      setError(err.message || "Credenciales inválidas");
+    } catch (err: unknown) {
+      console.error("Error login:", err);
+      setError(err instanceof Error ? err.message : "Credenciales inválidas");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Loading mientras detecta el tenant
   if (loadingTenant) {
     return (
       <Box
@@ -74,7 +75,6 @@ export default function LoginPage() {
     );
   }
 
-  // Si no hay tenant detectado
   if (!tenantSlug) {
     return (
       <Box
@@ -87,7 +87,7 @@ export default function LoginPage() {
         }}
       >
         <Alert severity="error">
-          No se pudo detectar el subdominio. Asegurate de estar en empresaA.localhost:5177
+          No se pudo detectar el subdominio
         </Alert>
       </Box>
     );
@@ -96,28 +96,43 @@ export default function LoginPage() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         position: "relative",
-        backgroundImage: "url(/src/assets/images/LoginFondo.png)",
+        height: "100vh",
+        width: "100vw",
+        margin: 0,
+        padding: 0,
+        backgroundImage: "url(/images/LoginFondo.png)",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        bgcolor: "#0a0a0a",
+        overflow: "hidden",
+
         "&::before": {
           content: '""',
           position: "absolute",
           top: 0,
           left: 0,
-          right: 0,
-          bottom: 0,
-          bgcolor: "rgba(10, 10, 20, 0.2)",
+          width: "100%",
+          height: "100%",
+          bgcolor: "rgba(10, 10, 20, 0.3)",
+          zIndex: 0,
         },
       }}
     >
-      <Container maxWidth="xs" sx={{ position: "relative", zIndex: 1 }}>
+      <Container
+        maxWidth="xs"
+        disableGutters
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          px: 2,
+        }}
+      >
         <Card
           elevation={24}
           sx={{
@@ -126,11 +141,12 @@ export default function LoginPage() {
             bgcolor: "rgba(255, 255, 255, 0.40)",
             backdropFilter: "blur(15px)",
             boxShadow: "0 8px 40px rgba(0, 0, 0, 0.3)",
+            width: "100%",
           }}
         >
           <Box
             sx={{
-              bgcolor: tenant?.primaryColor || "#1E2C56",
+              bgcolor: primaryColor,
               py: 2.5,
               px: 3,
               textAlign: "center",
@@ -139,25 +155,32 @@ export default function LoginPage() {
           >
             <Box
               sx={{
-                width: 50,
-                height: 50,
-                margin: "0 auto 10px",
+                width: 60,
+                height: 60,
+                margin: "0 auto 14px",
                 borderRadius: "50%",
-                bgcolor: tenant?.secondaryColor || "#4A90E2",
+                background: `linear-gradient(145deg, ${secondaryColor}, ${secondaryColor}CC)`,
+                backdropFilter: "blur(6px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(74, 144, 226, 0.3)",
+                boxShadow: `
+      0 0 18px ${secondaryColor}55,
+      0 4px 12px rgba(0,0,0,0.25)
+    `,
+                transition: "all 0.25s ease",
+                border: "2px solid rgba(255, 255, 255, 0.25)",
               }}
             >
-              <LocalGasStationIcon sx={{ fontSize: 28, color: "#fff" }} />
+              <LocalGasStationIcon sx={{ fontSize: 32, color: "#fff" }} />
             </Box>
+
             <Typography
               variant="h5"
               fontWeight="700"
               sx={{ mb: 0.5, letterSpacing: 0.3 }}
             >
-              {tenant?.name || "Fuel Manager"}
+              {tenant?.name?.toUpperCase()}
             </Typography>
             <Typography
               variant="caption"
@@ -193,7 +216,7 @@ export default function LoginPage() {
                 InputProps={{
                   startAdornment: (
                     <EmailOutlinedIcon
-                      sx={{ mr: 1, color: "#4A90E2", fontSize: 20 }}
+                      sx={{ mr: 1, color: secondaryColor, fontSize: 20 }}
                     />
                   ),
                 }}
@@ -210,10 +233,10 @@ export default function LoginPage() {
                       borderColor: "rgba(0, 0, 0, 0.1)",
                     },
                     "&:hover fieldset": {
-                      borderColor: "#4A90E2",
+                      borderColor: secondaryColor,
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: tenant?.primaryColor || "#1E2C56",
+                      borderColor: primaryColor,
                       borderWidth: 2,
                     },
                   },
@@ -243,7 +266,7 @@ export default function LoginPage() {
                 InputProps={{
                   startAdornment: (
                     <LockOutlinedIcon
-                      sx={{ mr: 1, color: "#4A90E2", fontSize: 20 }}
+                      sx={{ mr: 1, color: secondaryColor, fontSize: 20 }}
                     />
                   ),
                 }}
@@ -260,10 +283,10 @@ export default function LoginPage() {
                       borderColor: "rgba(0, 0, 0, 0.1)",
                     },
                     "&:hover fieldset": {
-                      borderColor: "#4A90E2",
+                      borderColor: secondaryColor,
                     },
                     "&.Mui-focused fieldset": {
-                      borderColor: tenant?.primaryColor || "#1E2C56",
+                      borderColor: primaryColor,
                       borderWidth: 2,
                     },
                   },
@@ -291,16 +314,16 @@ export default function LoginPage() {
                 disabled={isLoading}
                 sx={{
                   py: 1.4,
-                  bgcolor: tenant?.primaryColor || "#1E2C56",
+                  bgcolor: primaryColor,
                   fontWeight: "600",
                   textTransform: "none",
                   fontSize: "1rem",
                   borderRadius: 1.5,
-                  boxShadow: "0 4px 12px rgba(30, 44, 86, 0.3)",
+                  boxShadow: `0 4px 12px ${primaryColor}4D`,
                   "&:hover": {
-                    bgcolor: tenant?.secondaryColor || "#253661",
+                    bgcolor: secondaryColor,
                     transform: "translateY(-2px)",
-                    boxShadow: "0 6px 20px rgba(30, 44, 86, 0.4)",
+                    boxShadow: `0 6px 20px ${primaryColor}66`,
                   },
                   "&:disabled": {
                     bgcolor: "#ccc",
@@ -310,19 +333,6 @@ export default function LoginPage() {
               >
                 {isLoading ? "Iniciando..." : "Iniciar Sesión"}
               </Button>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  display: "block",
-                  textAlign: "center",
-                  mt: 2,
-                  fontSize: "0.75rem",
-                  color: "#666",
-                }}
-              >
-                Tenant: <strong>{tenantSlug}</strong>
-              </Typography>
             </form>
           </CardContent>
         </Card>
@@ -338,7 +348,7 @@ export default function LoginPage() {
             textShadow: "0 2px 4px rgba(0,0,0,0.6)",
           }}
         >
-          © 2025 Fuel Manager
+          © 2025 - GoodApps
         </Typography>
       </Container>
     </Box>

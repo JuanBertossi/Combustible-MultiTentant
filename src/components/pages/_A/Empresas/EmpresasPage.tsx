@@ -15,7 +15,6 @@ import {
   CardContent,
   Chip,
   IconButton,
-  LinearProgress,
   Avatar,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -80,6 +79,15 @@ const mockEmpresas: Empresa[] = [
   },
 ];
 
+const getInitials = (name: string): string => {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 export default function EmpresasPage() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -106,8 +114,6 @@ export default function EmpresasPage() {
   const loadEmpresas = async () => {
     setLoading(true);
     try {
-      // Aquí irá la llamada al servicio
-      // const data = await empresaService.getAll();
       await new Promise((resolve) => setTimeout(resolve, 500));
       setEmpresas(mockEmpresas);
     } catch (error) {
@@ -122,7 +128,8 @@ export default function EmpresasPage() {
       e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (e.domain && e.domain.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (e.adminEmail && e.adminEmail.toLowerCase().includes(searchTerm.toLowerCase()));
+      (e.adminEmail &&
+        e.adminEmail.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchSearch;
   });
 
@@ -141,7 +148,10 @@ export default function EmpresasPage() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Empresas");
-    XLSX.writeFile(wb, `Empresas_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Empresas_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   const handleNew = (): void => {
@@ -174,26 +184,31 @@ export default function EmpresasPage() {
     setOpenDialog(true);
   };
 
-  const validate = (): boolean => {
+  const handleDeleteClick = (empresa: Empresa): void => {
+    setDeleteEmpresa(empresa);
+    setOpenDeleteDialog(true);
+  };
+
+  const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    
+
     if (!formData.slug.trim()) {
-      newErrors.slug = "El slug es obligatorio";
+      newErrors.slug = "El slug es requerido";
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = "Solo minúsculas, números y guiones";
+      newErrors.slug = "Solo letras minúsculas, números y guiones";
     }
-    
+
     if (!formData.name.trim()) {
-      newErrors.name = "El nombre es obligatorio";
+      newErrors.name = "El nombre es requerido";
     }
-    
+
     if (!formData.domain.trim()) {
-      newErrors.domain = "El dominio es obligatorio";
+      newErrors.domain = "El dominio es requerido";
     }
-    
+
     if (!formData.adminEmail.trim()) {
-      newErrors.adminEmail = "El email es obligatorio";
-    } else if (!/\S+@\S+\.\S+/.test(formData.adminEmail)) {
+      newErrors.adminEmail = "El email es requerido";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.adminEmail)) {
       newErrors.adminEmail = "Email inválido";
     }
 
@@ -201,19 +216,19 @@ export default function EmpresasPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-    if (!validate()) return;
+  const handleSave = async (): Promise<void> => {
+    if (!validateForm()) return;
 
     try {
       if (editingEmpresa) {
-        // Update
+        // Actualizar
         setEmpresas(
           empresas.map((e) =>
-            e.id === editingEmpresa.id ? { ...editingEmpresa, ...formData } : e
+            e.id === editingEmpresa.id ? { ...e, ...formData } : e
           )
         );
       } else {
-        // Create
+        // Crear
         const newEmpresa: Empresa = {
           id: Math.max(...empresas.map((e) => e.id), 0) + 1,
           ...formData,
@@ -227,68 +242,73 @@ export default function EmpresasPage() {
     }
   };
 
-  const handleDeleteClick = (empresa: Empresa): void => {
-    setDeleteEmpresa(empresa);
-    setOpenDeleteDialog(true);
-  };
+  const handleDelete = async (): Promise<void> => {
+    if (!deleteEmpresa) return;
 
-  const handleDelete = async () => {
-    if (deleteEmpresa) {
-      try {
-        setEmpresas(empresas.filter((e) => e.id !== deleteEmpresa.id));
-      } catch (error) {
-        console.error("Error deleting empresa:", error);
-      }
+    try {
+      setEmpresas(empresas.filter((e) => e.id !== deleteEmpresa.id));
+      setOpenDeleteDialog(false);
+      setDeleteEmpresa(null);
+    } catch (error) {
+      console.error("Error deleting empresa:", error);
     }
-    setOpenDeleteDialog(false);
-    setDeleteEmpresa(null);
-  };
-
-  const getInitials = (name: string): string => {
-    return name
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
   };
 
   const copyLoginUrl = (empresa: Empresa): void => {
-    const url = `http://${empresa.slug}.localhost:5177/s/login`;
+    const url = `${window.location.origin}/login/${empresa.slug}`;
     navigator.clipboard.writeText(url);
-    // Aquí podrías mostrar un toast de éxito
-    console.log("URL copiada:", url);
+    alert(`URL copiada: ${url}`);
   };
-
-  if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <LinearProgress />
-        <Typography sx={{ mt: 2 }}>Cargando empresas...</Typography>
-      </Box>
-    );
-  }
 
   return (
     <Box>
+      {/* Header visual */}
       <Box sx={{ mb: 4 }}>
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "center",
             mb: 3,
+            px: 2,
+            py: 2,
+            bgcolor: "#284057",
+            borderRadius: 3,
+            boxShadow: "0 2px 8px rgba(40,64,87,0.08)",
           }}
         >
           <Box>
-            <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              sx={{ mb: 0.5, color: "#66FF99" }}
+            >
               Gestión de Empresas
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#F6F7F7" }}>
               Administra los tenants del sistema • {filteredEmpresas.length}{" "}
               {filteredEmpresas.length === 1 ? "empresa" : "empresas"}
             </Typography>
           </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleNew}
+            sx={{
+              bgcolor: "#66FF99",
+              color: "#284057",
+              fontWeight: 700,
+              px: 3,
+              py: 1.2,
+              fontSize: 16,
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(102,255,153,0.12)",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#196791", color: "#fff" },
+            }}
+          >
+            Nueva Empresa
+          </Button>
         </Box>
 
         <Box
@@ -300,7 +320,8 @@ export default function EmpresasPage() {
             bgcolor: "white",
             p: 2.5,
             borderRadius: 2,
-            border: "1px solid #e0e0e0",
+            border: `2px solid #66FF99`,
+            boxShadow: "0 2px 8px rgba(102,255,153,0.06)",
           }}
         >
           <TextField
@@ -308,11 +329,16 @@ export default function EmpresasPage() {
             size="small"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ flexGrow: 1, minWidth: 250 }}
+            sx={{
+              flexGrow: 1,
+              minWidth: 250,
+              borderRadius: 2,
+              bgcolor: "#F6F7F7",
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: "#999" }} />
+                  <SearchIcon sx={{ color: "#284057" }} />
                 </InputAdornment>
               ),
             }}
@@ -324,29 +350,18 @@ export default function EmpresasPage() {
             onClick={handleExport}
             disabled={filteredEmpresas.length === 0}
             sx={{
-              borderColor: "#10b981",
-              color: "#10b981",
+              borderColor: "#66FF99",
+              color: "#284057",
               fontWeight: 600,
+              borderRadius: 2,
               "&:hover": {
-                borderColor: "#059669",
-                bgcolor: "#10b98110",
+                borderColor: "#196791",
+                bgcolor: "#66FF9910",
+                color: "#196791",
               },
             }}
           >
             Exportar
-          </Button>
-
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNew}
-            sx={{
-              bgcolor: "#1E2C56",
-              fontWeight: 600,
-              "&:hover": { bgcolor: "#16213E" },
-            }}
-          >
-            Nueva Empresa
           </Button>
         </Box>
       </Box>
@@ -357,43 +372,54 @@ export default function EmpresasPage() {
             <Card
               elevation={0}
               sx={{
-                border: "1px solid #e0e0e0",
-                borderRadius: 2,
+                border: `2px solid #66FF99`,
+                borderRadius: 3,
                 height: "100%",
                 transition: "all 0.3s",
+                boxShadow: "0 2px 8px rgba(40,64,87,0.06)",
                 "&:hover": {
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  boxShadow: "0 6px 18px rgba(40,64,87,0.12)",
                   transform: "translateY(-2px)",
+                  borderColor: "#196791",
                 },
               }}
             >
-              <CardContent sx={{ p: 2.5 }}>
+              <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                   <Avatar
                     sx={{
-                      width: 56,
-                      height: 56,
-                      bgcolor: empresa.primaryColor || "#1E2C56",
-                      fontSize: 20,
+                      width: 64,
+                      height: 64,
+                      bgcolor: empresa.primaryColor || "#284057",
+                      fontSize: 24,
                       fontWeight: 700,
                       mr: 2,
+                      border: `2px solid #66FF99`,
                     }}
                   >
                     {getInitials(empresa.name)}
                   </Avatar>
                   <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" fontWeight="700" sx={{ mb: 0.5 }}>
+                    <Typography
+                      variant="h6"
+                      fontWeight="700"
+                      sx={{ mb: 0.5, color: "#284057" }}
+                    >
                       {empresa.name}
                     </Typography>
                     <Chip
                       label={empresa.activo ? "Activo" : "Inactivo"}
                       size="small"
                       sx={{
-                        bgcolor: empresa.activo ? "#10b98115" : "#99999915",
-                        color: empresa.activo ? "#10b981" : "#999",
-                        fontWeight: 600,
-                        height: 20,
-                        fontSize: 11,
+                        bgcolor: empresa.activo ? "#66FF9915" : "#99999915",
+                        color: empresa.activo ? "#284057" : "#999",
+                        fontWeight: 700,
+                        height: 22,
+                        fontSize: 12,
+                        borderRadius: 1,
+                        border: empresa.activo
+                          ? `1.5px solid #66FF99`
+                          : undefined,
                       }}
                     />
                   </Box>
@@ -403,12 +429,15 @@ export default function EmpresasPage() {
                   <Box sx={{ mb: 1.5 }}>
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mb: 0.3 }}
+                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
                     >
                       Slug
                     </Typography>
-                    <Typography variant="body2" fontWeight="600">
+                    <Typography
+                      variant="body2"
+                      fontWeight="700"
+                      sx={{ color: "#196791" }}
+                    >
                       {empresa.slug}
                     </Typography>
                   </Box>
@@ -416,12 +445,15 @@ export default function EmpresasPage() {
                   <Box sx={{ mb: 1.5 }}>
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mb: 0.3 }}
+                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
                     >
                       Dominio
                     </Typography>
-                    <Typography variant="body2" fontWeight="600">
+                    <Typography
+                      variant="body2"
+                      fontWeight="700"
+                      sx={{ color: "#196791" }}
+                    >
                       {empresa.domain}
                     </Typography>
                   </Box>
@@ -429,15 +461,14 @@ export default function EmpresasPage() {
                   <Box sx={{ mb: 1.5 }}>
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mb: 0.3 }}
+                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
                     >
                       Email Admin
                     </Typography>
                     <Typography
                       variant="body2"
-                      fontWeight="600"
-                      sx={{ wordBreak: "break-word" }}
+                      fontWeight="700"
+                      sx={{ wordBreak: "break-word", color: "#196791" }}
                     >
                       {empresa.adminEmail}
                     </Typography>
@@ -446,23 +477,23 @@ export default function EmpresasPage() {
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                     <Box
                       sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 1,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 2,
                         bgcolor: empresa.primaryColor,
-                        border: "1px solid #e0e0e0",
+                        border: `2px solid #66FF99`,
                       }}
                     />
                     <Box
                       sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 1,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 2,
                         bgcolor: empresa.secondaryColor,
-                        border: "1px solid #e0e0e0",
+                        border: `2px solid #66FF99`,
                       }}
                     />
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: "#284057" }}>
                       Colores del tema
                     </Typography>
                   </Box>
@@ -477,7 +508,16 @@ export default function EmpresasPage() {
                     onClick={() => copyLoginUrl(empresa)}
                     sx={{
                       textTransform: "none",
-                      fontSize: 12,
+                      fontSize: 13,
+                      borderColor: "#66FF99",
+                      color: "#284057",
+                      fontWeight: 700,
+                      borderRadius: 2,
+                      "&:hover": {
+                        borderColor: "#196791",
+                        bgcolor: "#66FF9910",
+                        color: "#196791",
+                      },
                     }}
                   >
                     Copiar URL
@@ -489,9 +529,10 @@ export default function EmpresasPage() {
                     size="small"
                     onClick={() => handleEdit(empresa)}
                     sx={{
-                      bgcolor: "#e5e7eb",
-                      color: "#374151",
-                      "&:hover": { bgcolor: "#d1d5db" },
+                      bgcolor: "#66FF99",
+                      color: "#284057",
+                      borderRadius: 2,
+                      "&:hover": { bgcolor: "#196791", color: "#fff" },
                     }}
                   >
                     <EditIcon fontSize="small" />
@@ -502,6 +543,7 @@ export default function EmpresasPage() {
                     sx={{
                       bgcolor: "#fee2e2",
                       color: "#dc2626",
+                      borderRadius: 2,
                       "&:hover": { bgcolor: "#fecaca" },
                     }}
                   >
@@ -516,16 +558,23 @@ export default function EmpresasPage() {
 
       {filteredEmpresas.length === 0 && (
         <Box sx={{ textAlign: "center", py: 8 }}>
-          <BusinessIcon sx={{ fontSize: 64, color: "#ddd", mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
+          <BusinessIcon sx={{ fontSize: 64, color: "#284057", mb: 2 }} />
+          <Typography variant="h6" sx={{ color: "#284057" }}>
             No hay empresas registradas
           </Typography>
         </Box>
       )}
 
       {/* Dialog Crear/Editar */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingEmpresa ? "Editar Empresa" : "Nueva Empresa"}</DialogTitle>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: "#284057", fontWeight: 700 }}>
+          {editingEmpresa ? "Editar Empresa" : "Nueva Empresa"}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
             <TextField
@@ -540,40 +589,50 @@ export default function EmpresasPage() {
               disabled={!!editingEmpresa}
               placeholder="empresaA"
               fullWidth
+              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
             />
 
             <TextField
               label="Nombre de la Empresa"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               error={!!errors.name}
               helperText={errors.name}
               required
               placeholder="Empresa A - Transportes"
               fullWidth
+              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
             />
 
             <TextField
               label="Dominio"
               value={formData.domain}
-              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, domain: e.target.value })
+              }
               error={!!errors.domain}
               helperText={errors.domain || "Dominio de la empresa"}
               required
               placeholder="empresaA.com"
               fullWidth
+              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
             />
 
             <TextField
               label="Email del Administrador"
               type="email"
               value={formData.adminEmail}
-              onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, adminEmail: e.target.value })
+              }
               error={!!errors.adminEmail}
               helperText={errors.adminEmail}
               required
               placeholder="admin@empresaA.com"
               fullWidth
+              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
             />
 
             <Box sx={{ display: "flex", gap: 2 }}>
@@ -581,8 +640,11 @@ export default function EmpresasPage() {
                 label="Color Primario"
                 type="color"
                 value={formData.primaryColor}
-                onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, primaryColor: e.target.value })
+                }
                 fullWidth
+                sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
               />
               <TextField
                 label="Color Secundario"
@@ -592,32 +654,65 @@ export default function EmpresasPage() {
                   setFormData({ ...formData, secondaryColor: e.target.value })
                 }
                 fullWidth
+                sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
               />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>
+          <Button
+            onClick={() => setOpenDialog(false)}
+            sx={{ color: "#284057", fontWeight: 700 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            sx={{
+              bgcolor: "#66FF99",
+              color: "#284057",
+              fontWeight: 700,
+              borderRadius: 2,
+              "&:hover": { bgcolor: "#196791", color: "#fff" },
+            }}
+          >
             {editingEmpresa ? "Guardar Cambios" : "Crear Empresa"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog Eliminar */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle sx={{ color: "#dc2626", fontWeight: 700 }}>
+          Confirmar Eliminación
+        </DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de eliminar la empresa <strong>{deleteEmpresa?.name}</strong>?
+            ¿Estás seguro de eliminar la empresa{" "}
+            <strong>{deleteEmpresa?.name}</strong>?
           </Typography>
           <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-            Esta acción no se puede deshacer y eliminará todos los datos asociados.
+            Esta acción no se puede deshacer y eliminará todos los datos
+            asociados.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
+          <Button
+            onClick={() => setOpenDeleteDialog(false)}
+            sx={{ color: "#284057", fontWeight: 700 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            sx={{ borderRadius: 2, fontWeight: 700 }}
+          >
             Eliminar
           </Button>
         </DialogActions>

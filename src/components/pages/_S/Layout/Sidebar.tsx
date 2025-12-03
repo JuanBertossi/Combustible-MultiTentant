@@ -28,7 +28,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PropaneTankIcon from "@mui/icons-material/PropaneTank";
 import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenant } from "../providers/tenants/tenant-provider";
+import { useTenant } from "../../../providers/tenants/tenant-provider";
 
 const DRAWER_WIDTH = 260;
 
@@ -184,7 +184,7 @@ export default function Sidebar() {
         <LocalGasStationIcon sx={{ fontSize: 40, color: "#4A90E2", mb: 1 }} />
 
         <Typography variant="h6" fontWeight="bold">
-          Fuel Manager
+          Gestion Combustibles
         </Typography>
 
         <Typography

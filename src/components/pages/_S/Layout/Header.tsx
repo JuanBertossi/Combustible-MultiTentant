@@ -1,4 +1,3 @@
-// components/layout/Header.tsx
 import {
   AppBar,
   Toolbar,
@@ -18,15 +17,16 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { useTenantAuth } from "../providers/auth/_S/TenantAuthProvider";
+// Asegúrate de que las rutas y tipos de auth sean correctos para tu proyecto
+import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider"; 
 import { useNavigate } from "react-router-dom";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
 
 type UserRole = "admin" | "superadmin";
 
 export default function Header() {
-  const { user, logout } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, logout } = useTenantAuth(); // Asume que 'user' tiene 'name', 'email' y 'role'
+  const { name: tenantName } = useTenantContext(); // Asume que se obtiene el nombre del tenant
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -39,7 +39,7 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    logout(); 
+    logout(); // Implementación de cierre de sesión
   };
 
   const getAvatarColor = (nombre: string | undefined): string => {
@@ -61,8 +61,8 @@ export default function Header() {
     rol: UserRole | undefined
   ): { bg: string; color: string } => {
     const colors: Record<UserRole, { bg: string; color: string }> = {
-      admin: { bg: "#ef444415", color: "#ef4444" },
-      superadmin: { bg: "#8b5cf615", color: "#8b5cf6" },
+      admin: { bg: "#ef444415", color: "#ef4444" }, // Rojo suave para Admin
+      superadmin: { bg: "#8b5cf615", color: "#8b5cf6" }, // Púrpura suave para SuperAdmin
     };
     return rol ? colors[rol] : { bg: "#99999915", color: "#999" };
   };
@@ -93,15 +93,15 @@ export default function Header() {
       position="sticky"
       elevation={0}
       sx={{
-        background: "#E1E9EF",
-        backdropFilter: "blur(20px)",
+        background: "#E1E9EF", // Fondo base sutil
+        backdropFilter: "blur(20px)", // Efecto de cristal para el fondo
         borderBottom: "1px solid rgba(180, 195, 205, 0.6)",
         zIndex: (theme) => theme.zIndex.drawer - 1,
         boxShadow: "0 2px 8px rgba(30, 44, 86, 0.08)",
       }}
     >
       <Toolbar sx={{ minHeight: "72px !important", px: 4 }}>
-        {/* Left side */}
+        {/* Lado Izquierdo (Bienvenida y Rol) */}
         <Box
           sx={{
             flexGrow: 1,
@@ -138,11 +138,11 @@ export default function Header() {
               {user?.name}
             </Typography>
             <Chip
-              label={getRolLabel(user?.role)}
+              label={getRolLabel(user?.role as UserRole)}
               size="small"
               sx={{
-                bgcolor: getRolColor(user?.role).bg,
-                color: getRolColor(user?.role).color,
+                bgcolor: getRolColor(user?.role as UserRole).bg,
+                color: getRolColor(user?.role as UserRole).color,
                 fontWeight: 700,
                 height: 26,
                 fontSize: 12,
@@ -153,7 +153,7 @@ export default function Header() {
           </Box>
         </Box>
 
-        {/* Right side */}
+        {/* Lado Derecho (Notificaciones y Avatar) */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
           {/* Notificaciones */}
           <IconButton sx={commonIconButtonStyle}>
@@ -174,7 +174,7 @@ export default function Header() {
             </Badge>
           </IconButton>
 
-          {/* Avatar */}
+          {/* Avatar (Click para Menú) */}
           <IconButton
             onClick={handleMenu}
             sx={{
@@ -203,7 +203,7 @@ export default function Header() {
           </IconButton>
         </Box>
 
-        {/* Profile Menu */}
+        {/* Menú de Perfil (Dropdown) */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
@@ -220,6 +220,7 @@ export default function Header() {
               background: "rgba(255, 255, 255, 0.98)",
               backdropFilter: "blur(20px)",
               "&:before": {
+                // Triángulo apuntando al Avatar
                 content: '""',
                 display: "block",
                 position: "absolute",
@@ -244,6 +245,7 @@ export default function Header() {
           transformOrigin={{ horizontal: "right", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         >
+          {/* Bloque de Información del Usuario */}
           <Box sx={{ px: 3, py: 3 }}>
             <Box
               sx={{ display: "flex", alignItems: "center", gap: 2.5, mb: 2.5 }}
@@ -275,11 +277,11 @@ export default function Header() {
                   {user?.name}
                 </Typography>
                 <Chip
-                  label={getRolLabel(user?.role)}
+                  label={getRolLabel(user?.role as UserRole)}
                   size="small"
                   sx={{
-                    bgcolor: getRolColor(user?.role).bg,
-                    color: getRolColor(user?.role).color,
+                    bgcolor: getRolColor(user?.role as UserRole).bg,
+                    color: getRolColor(user?.role as UserRole).color,
                     fontWeight: 700,
                     height: 24,
                     fontSize: 11,
@@ -325,6 +327,7 @@ export default function Header() {
 
           <Divider sx={{ borderColor: "rgba(226, 232, 240, 0.6)" }} />
 
+          {/* Opciones de Navegación */}
           <Box sx={{ p: 1.5 }}>
             <MenuItem
               onClick={handleClose}
@@ -348,6 +351,7 @@ export default function Header() {
 
           <Divider sx={{ borderColor: "rgba(226, 232, 240, 0.6)" }} />
 
+          {/* Cerrar Sesión */}
           <MenuItem
             onClick={handleLogout}
             sx={{
