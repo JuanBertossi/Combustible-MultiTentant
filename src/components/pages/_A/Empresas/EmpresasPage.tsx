@@ -10,12 +10,26 @@ import {
   DialogActions,
   Typography,
   InputAdornment,
-  Grid,
   Card,
   CardContent,
   Chip,
   IconButton,
   Avatar,
+  Skeleton,
+  Fade,
+  Grow,
+  Tooltip,
+  Switch,
+  FormControlLabel,
+  Divider,
+  alpha,
+  Tabs,
+  Tab,
+  Drawer,
+  LinearProgress,
+  Checkbox,
+  FormGroup,
+  Slider,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -24,7 +38,69 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LinkIcon from "@mui/icons-material/Link";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import DomainIcon from "@mui/icons-material/Domain";
+import EmailIcon from "@mui/icons-material/Email";
+import PaletteIcon from "@mui/icons-material/Palette";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import PeopleIcon from "@mui/icons-material/People";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+import SettingsIcon from "@mui/icons-material/Settings";
+import CloseIcon from "@mui/icons-material/Close";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import MicIcon from "@mui/icons-material/Mic";
+import SpeedIcon from "@mui/icons-material/Speed";
+import PropaneTankIcon from "@mui/icons-material/PropaneTank";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import * as XLSX from "xlsx";
+
+// Theme colors
+const theme = {
+  primary: "#284057",
+  secondary: "#66FF99",
+  primaryHover: "#2391CB",
+  background: "#F8FAFB",
+  surface: "#FFFFFF",
+  textPrimary: "#284057",
+  textSecondary: "#5A6B7D",
+  border: "#E8EDF2",
+  success: "#22C55E",
+  error: "#EF4444",
+  warning: "#F59E0B",
+  info: "#3B82F6",
+};
+
+// Interfaces
+interface EmpresaStats {
+  usuarios: number;
+  vehiculos: number;
+  eventosHoy: number;
+  eventosMes: number;
+  litrosMes: number;
+  costoMes: number;
+  eventosValidados: number;
+  eventosPendientes: number;
+}
+
+interface EmpresaPolicies {
+  requiereFotoSurtidor: boolean;
+  requiereFotoOdometro: boolean;
+  requiereFotoCuentaLitros: boolean;
+  requiereUbicacion: boolean;
+  requiereAudio: boolean;
+  litrosMaximoPorCarga: number;
+  precioCombustible: number;
+  alertaDuplicados: boolean;
+  validacionAutomatica: boolean;
+}
 
 interface Empresa {
   id: number;
@@ -35,8 +111,12 @@ interface Empresa {
   primaryColor?: string;
   secondaryColor?: string;
   adminEmail?: string;
+  adminPhone?: string;
   activo: boolean;
   createdAt?: string;
+  plan?: "basic" | "professional" | "enterprise";
+  stats?: EmpresaStats;
+  policies?: EmpresaPolicies;
 }
 
 interface EmpresaFormData {
@@ -44,38 +124,110 @@ interface EmpresaFormData {
   name: string;
   domain: string;
   adminEmail: string;
+  adminPhone: string;
   primaryColor: string;
   secondaryColor: string;
   activo: boolean;
+  plan: "basic" | "professional" | "enterprise";
+  policies: EmpresaPolicies;
 }
 
 interface FormErrors {
   [key: string]: string;
 }
 
+// Default policies
+const defaultPolicies: EmpresaPolicies = {
+  requiereFotoSurtidor: true,
+  requiereFotoOdometro: true,
+  requiereFotoCuentaLitros: false,
+  requiereUbicacion: true,
+  requiereAudio: false,
+  litrosMaximoPorCarga: 500,
+  precioCombustible: 1.25,
+  alertaDuplicados: true,
+  validacionAutomatica: false,
+};
+
 // Mock data inicial
 const mockEmpresas: Empresa[] = [
   {
     id: 1,
-    slug: "empresaA",
-    name: "Empresa A - Transportes",
-    domain: "empresaA.com",
-    adminEmail: "admin@empresaA.com",
+    slug: "transportes-sur",
+    name: "Transportes del Sur S.A.",
+    domain: "transportes-sur.com",
+    adminEmail: "admin@transportes-sur.com",
+    adminPhone: "+54 11 4567-8900",
     primaryColor: "#1E2C56",
     secondaryColor: "#4A90E2",
     activo: true,
     createdAt: "2024-01-15",
+    plan: "professional",
+    stats: {
+      usuarios: 45,
+      vehiculos: 32,
+      eventosHoy: 18,
+      eventosMes: 342,
+      litrosMes: 15420,
+      costoMes: 19275,
+      eventosValidados: 320,
+      eventosPendientes: 22,
+    },
+    policies: {
+      ...defaultPolicies,
+      requiereFotoCuentaLitros: true,
+    },
   },
   {
     id: 2,
-    slug: "empresaB",
-    name: "Empresa B - Logística",
-    domain: "empresaB.com",
-    adminEmail: "admin@empresaB.com",
+    slug: "logistica-express",
+    name: "Logística Express",
+    domain: "logistica-express.com",
+    adminEmail: "admin@logistica-express.com",
+    adminPhone: "+54 11 2345-6789",
     primaryColor: "#10b981",
     secondaryColor: "#059669",
     activo: true,
     createdAt: "2024-02-20",
+    plan: "enterprise",
+    stats: {
+      usuarios: 120,
+      vehiculos: 85,
+      eventosHoy: 52,
+      eventosMes: 1250,
+      litrosMes: 58200,
+      costoMes: 72750,
+      eventosValidados: 1180,
+      eventosPendientes: 70,
+    },
+    policies: defaultPolicies,
+  },
+  {
+    id: 3,
+    slug: "agro-campos",
+    name: "Agro Campos S.R.L.",
+    domain: "agrocampos.com.ar",
+    adminEmail: "sistemas@agrocampos.com.ar",
+    adminPhone: "+54 351 456-7890",
+    primaryColor: "#854d0e",
+    secondaryColor: "#eab308",
+    activo: false,
+    createdAt: "2024-03-10",
+    plan: "basic",
+    stats: {
+      usuarios: 12,
+      vehiculos: 8,
+      eventosHoy: 0,
+      eventosMes: 45,
+      litrosMes: 2100,
+      costoMes: 2625,
+      eventosValidados: 45,
+      eventosPendientes: 0,
+    },
+    policies: {
+      ...defaultPolicies,
+      requiereAudio: true,
+    },
   },
 ];
 
@@ -88,22 +240,237 @@ const getInitials = (name: string): string => {
     .slice(0, 2);
 };
 
+const formatNumber = (num: number): string => {
+  return new Intl.NumberFormat("es-AR").format(num);
+};
+
+const formatCurrency = (num: number): string => {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "USD",
+  }).format(num);
+};
+
+// Plan badge component
+const PlanBadge = ({ plan }: { plan: string }) => {
+  const planConfig = {
+    basic: {
+      label: "Básico",
+      color: theme.textSecondary,
+      bg: alpha(theme.textSecondary, 0.1),
+    },
+    professional: {
+      label: "Profesional",
+      color: theme.info,
+      bg: alpha(theme.info, 0.1),
+    },
+    enterprise: {
+      label: "Enterprise",
+      color: theme.warning,
+      bg: alpha(theme.warning, 0.1),
+    },
+  };
+  const config =
+    planConfig[plan as keyof typeof planConfig] || planConfig.basic;
+
+  return (
+    <Chip
+      label={config.label}
+      size="small"
+      sx={{
+        bgcolor: config.bg,
+        color: config.color,
+        fontWeight: 600,
+        fontSize: 11,
+        height: 22,
+        borderRadius: 1.5,
+      }}
+    />
+  );
+};
+
+// Stat Card Mini Component
+const StatMini = ({
+  icon,
+  value,
+  label,
+  color = theme.primary,
+}: {
+  icon: React.ReactNode;
+  value: string | number;
+  label: string;
+  color?: string;
+}) => (
+  <Box sx={{ textAlign: "center", flex: 1 }}>
+    <Box
+      sx={{
+        width: 36,
+        height: 36,
+        borderRadius: 2,
+        bgcolor: alpha(color, 0.1),
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        mx: "auto",
+        mb: 0.5,
+      }}
+    >
+      {icon}
+    </Box>
+    <Typography variant="body2" fontWeight={700} color={theme.textPrimary}>
+      {value}
+    </Typography>
+    <Typography
+      variant="caption"
+      color={theme.textSecondary}
+      sx={{ fontSize: 10 }}
+    >
+      {label}
+    </Typography>
+  </Box>
+);
+
+// Skeleton Card Component
+const SkeletonCard = () => (
+  <Card
+    elevation={0}
+    sx={{
+      border: `1px solid ${theme.border}`,
+      borderRadius: 4,
+      height: "100%",
+    }}
+  >
+    <CardContent sx={{ p: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <Skeleton variant="circular" width={56} height={56} sx={{ mr: 2 }} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Skeleton variant="text" width="70%" height={24} />
+          <Skeleton variant="text" width="40%" height={18} sx={{ mt: 0.5 }} />
+        </Box>
+      </Box>
+      <Skeleton variant="rounded" height={80} sx={{ mb: 2, borderRadius: 2 }} />
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Skeleton
+          variant="rounded"
+          width="100%"
+          height={36}
+          sx={{ borderRadius: 2 }}
+        />
+      </Box>
+    </CardContent>
+  </Card>
+);
+
+// Empty State Component
+const EmptyState = ({ onAddNew }: { onAddNew: () => void }) => (
+  <Fade in timeout={600}>
+    <Box
+      sx={{
+        textAlign: "center",
+        py: 10,
+        px: 4,
+        bgcolor: theme.surface,
+        borderRadius: 4,
+        border: `2px dashed ${theme.border}`,
+      }}
+    >
+      <Box
+        sx={{
+          width: 120,
+          height: 120,
+          borderRadius: "50%",
+          bgcolor: alpha(theme.secondary, 0.15),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mx: "auto",
+          mb: 3,
+        }}
+      >
+        <BusinessIcon sx={{ fontSize: 56, color: theme.primary }} />
+      </Box>
+      <Typography
+        variant="h5"
+        fontWeight={700}
+        sx={{ color: theme.primary, mb: 1 }}
+      >
+        No hay empresas registradas
+      </Typography>
+      <Typography
+        variant="body1"
+        sx={{ color: theme.textSecondary, mb: 4, maxWidth: 400, mx: "auto" }}
+      >
+        Comienza agregando tu primera empresa para gestionar los tenants del
+        sistema de combustible
+      </Typography>
+      <Button
+        variant="contained"
+        startIcon={<AddIcon />}
+        onClick={onAddNew}
+        sx={{
+          bgcolor: theme.primary,
+          color: theme.surface,
+          fontWeight: 700,
+          px: 4,
+          py: 1.5,
+          fontSize: 16,
+          borderRadius: 3,
+          textTransform: "none",
+          boxShadow: `0 4px 14px ${alpha(theme.primary, 0.35)}`,
+          "&:hover": {
+            bgcolor: theme.primaryHover,
+            transform: "translateY(-2px)",
+            boxShadow: `0 6px 20px ${alpha(theme.primaryHover, 0.4)}`,
+          },
+          transition: "all 0.3s ease",
+        }}
+      >
+        Agregar Primera Empresa
+      </Button>
+    </Box>
+  </Fade>
+);
+
+// Tab Panel Component
+function TabPanel({
+  children,
+  value,
+  index,
+}: {
+  children: React.ReactNode;
+  value: number;
+  index: number;
+}) {
+  return (
+    <div hidden={value !== index} style={{ paddingTop: 16 }}>
+      {value === index && children}
+    </div>
+  );
+}
+
 export default function EmpresasPage() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
+  const [openDetailDrawer, setOpenDetailDrawer] = useState<boolean>(false);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
   const [deleteEmpresa, setDeleteEmpresa] = useState<Empresa | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
   const [formData, setFormData] = useState<EmpresaFormData>({
     slug: "",
     name: "",
     domain: "",
     adminEmail: "",
-    primaryColor: "#1E2C56",
-    secondaryColor: "#4A90E2",
+    adminPhone: "",
+    primaryColor: "#284057",
+    secondaryColor: "#66FF99",
     activo: true,
+    plan: "basic",
+    policies: defaultPolicies,
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -114,7 +481,7 @@ export default function EmpresasPage() {
   const loadEmpresas = async () => {
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       setEmpresas(mockEmpresas);
     } catch (error) {
       console.error("Error loading empresas:", error);
@@ -133,15 +500,27 @@ export default function EmpresasPage() {
     return matchSearch;
   });
 
+  // Calculate totals for header
+  const totals = {
+    empresas: empresas.length,
+    activas: empresas.filter((e) => e.activo).length,
+    usuarios: empresas.reduce((acc, e) => acc + (e.stats?.usuarios || 0), 0),
+    vehiculos: empresas.reduce((acc, e) => acc + (e.stats?.vehiculos || 0), 0),
+  };
+
   const handleExport = (): void => {
     const dataToExport = filteredEmpresas.map((e) => ({
       Slug: e.slug,
       Nombre: e.name,
       Dominio: e.domain || "",
       "Email Admin": e.adminEmail || "",
-      "Color Primario": e.primaryColor || "",
-      "Color Secundario": e.secondaryColor || "",
+      "Teléfono Admin": e.adminPhone || "",
+      Plan: e.plan || "basic",
       Estado: e.activo ? "Activo" : "Inactivo",
+      Usuarios: e.stats?.usuarios || 0,
+      Vehículos: e.stats?.vehiculos || 0,
+      "Eventos Mes": e.stats?.eventosMes || 0,
+      "Litros Mes": e.stats?.litrosMes || 0,
       "Fecha Creación": e.createdAt || "",
     }));
 
@@ -161,11 +540,15 @@ export default function EmpresasPage() {
       name: "",
       domain: "",
       adminEmail: "",
-      primaryColor: "#1E2C56",
-      secondaryColor: "#4A90E2",
+      adminPhone: "",
+      primaryColor: "#284057",
+      secondaryColor: "#66FF99",
       activo: true,
+      plan: "basic",
+      policies: defaultPolicies,
     });
     setErrors({});
+    setActiveTab(0);
     setOpenDialog(true);
   };
 
@@ -176,12 +559,21 @@ export default function EmpresasPage() {
       name: empresa.name,
       domain: empresa.domain || "",
       adminEmail: empresa.adminEmail || "",
-      primaryColor: empresa.primaryColor || "#1E2C56",
-      secondaryColor: empresa.secondaryColor || "#4A90E2",
+      adminPhone: empresa.adminPhone || "",
+      primaryColor: empresa.primaryColor || "#284057",
+      secondaryColor: empresa.secondaryColor || "#66FF99",
       activo: empresa.activo,
+      plan: empresa.plan || "basic",
+      policies: empresa.policies || defaultPolicies,
     });
     setErrors({});
+    setActiveTab(0);
     setOpenDialog(true);
+  };
+
+  const handleViewDetail = (empresa: Empresa): void => {
+    setSelectedEmpresa(empresa);
+    setOpenDetailDrawer(true);
   };
 
   const handleDeleteClick = (empresa: Empresa): void => {
@@ -221,18 +613,28 @@ export default function EmpresasPage() {
 
     try {
       if (editingEmpresa) {
-        // Actualizar
         setEmpresas(
           empresas.map((e) =>
-            e.id === editingEmpresa.id ? { ...e, ...formData } : e
+            e.id === editingEmpresa.id
+              ? { ...e, ...formData, policies: formData.policies }
+              : e
           )
         );
       } else {
-        // Crear
         const newEmpresa: Empresa = {
           id: Math.max(...empresas.map((e) => e.id), 0) + 1,
           ...formData,
           createdAt: new Date().toISOString().split("T")[0],
+          stats: {
+            usuarios: 0,
+            vehiculos: 0,
+            eventosHoy: 0,
+            eventosMes: 0,
+            litrosMes: 0,
+            costoMes: 0,
+            eventosValidados: 0,
+            eventosPendientes: 0,
+          },
         };
         setEmpresas([...empresas, newEmpresa]);
       }
@@ -255,73 +657,202 @@ export default function EmpresasPage() {
   };
 
   const copyLoginUrl = (empresa: Empresa): void => {
-    const url = `${window.location.origin}/login/${empresa.slug}`;
+    const url = `${window.location.origin}/${empresa.slug}/login`;
     navigator.clipboard.writeText(url);
-    alert(`URL copiada: ${url}`);
+    setCopiedId(empresa.id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
-    <Box>
-      {/* Header visual */}
-      <Box sx={{ mb: 4 }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: theme.background, p: 3 }}>
+      {/* Header Section */}
+      <Fade in timeout={400}>
         <Box
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-            px: 2,
-            py: 2,
-            bgcolor: "#284057",
-            borderRadius: 3,
-            boxShadow: "0 2px 8px rgba(40,64,87,0.08)",
+            mb: 4,
+            p: 4,
+            background: `linear-gradient(135deg, ${theme.primary} 0%, ${alpha(
+              theme.primary,
+              0.85
+            )} 100%)`,
+            borderRadius: 4,
+            position: "relative",
+            overflow: "hidden",
+            boxShadow: `0 10px 40px ${alpha(theme.primary, 0.3)}`,
           }}
         >
-          <Box>
-            <Typography
-              variant="h4"
-              fontWeight="bold"
-              sx={{ mb: 0.5, color: "#66FF99" }}
-            >
-              Gestión de Empresas
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#F6F7F7" }}>
-              Administra los tenants del sistema • {filteredEmpresas.length}{" "}
-              {filteredEmpresas.length === 1 ? "empresa" : "empresas"}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNew}
+          {/* Decorative elements */}
+          <Box
             sx={{
-              bgcolor: "#66FF99",
-              color: "#284057",
-              fontWeight: 700,
-              px: 3,
-              py: 1.2,
-              fontSize: 16,
-              borderRadius: 2,
-              boxShadow: "0 2px 8px rgba(102,255,153,0.12)",
-              textTransform: "none",
-              "&:hover": { bgcolor: "#196791", color: "#fff" },
+              position: "absolute",
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              bgcolor: alpha(theme.secondary, 0.1),
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: -30,
+              right: 100,
+              width: 120,
+              height: 120,
+              borderRadius: "50%",
+              bgcolor: alpha(theme.secondary, 0.08),
+            }}
+          />
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              gap: 3,
+              position: "relative",
+              zIndex: 1,
             }}
           >
-            Nueva Empresa
-          </Button>
-        </Box>
+            <Box>
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+              >
+                <Box
+                  sx={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 3,
+                    bgcolor: alpha(theme.secondary, 0.2),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <BusinessIcon sx={{ fontSize: 28, color: theme.secondary }} />
+                </Box>
+                <Box>
+                  <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    sx={{ color: theme.surface }}
+                  >
+                    Gestión de Empresas
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha(theme.surface, 0.7) }}
+                  >
+                    Panel de administración de tenants • Sistema de Combustible
+                  </Typography>
+                </Box>
+              </Box>
 
+              {/* Quick Stats */}
+              <Box sx={{ display: "flex", gap: 4, mt: 3 }}>
+                <Box>
+                  <Typography
+                    variant="h3"
+                    fontWeight={800}
+                    sx={{ color: theme.secondary }}
+                  >
+                    {loading ? "..." : totals.activas}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha(theme.surface, 0.7) }}
+                  >
+                    Empresas activas
+                  </Typography>
+                </Box>
+                <Divider
+                  orientation="vertical"
+                  flexItem
+                  sx={{ bgcolor: alpha(theme.surface, 0.2) }}
+                />
+                <Box>
+                  <Typography
+                    variant="h3"
+                    fontWeight={800}
+                    sx={{ color: theme.surface }}
+                  >
+                    {loading ? "..." : formatNumber(totals.usuarios)}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha(theme.surface, 0.7) }}
+                  >
+                    Usuarios totales
+                  </Typography>
+                </Box>
+                <Divider
+                  orientation="vertical"
+                  flexItem
+                  sx={{ bgcolor: alpha(theme.surface, 0.2) }}
+                />
+                <Box>
+                  <Typography
+                    variant="h3"
+                    fontWeight={800}
+                    sx={{ color: theme.surface }}
+                  >
+                    {loading ? "..." : formatNumber(totals.vehiculos)}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha(theme.surface, 0.7) }}
+                  >
+                    Vehículos registrados
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleNew}
+              sx={{
+                bgcolor: theme.secondary,
+                color: theme.primary,
+                fontWeight: 700,
+                px: 4,
+                py: 1.5,
+                fontSize: 15,
+                borderRadius: 3,
+                textTransform: "none",
+                boxShadow: `0 4px 14px ${alpha(theme.secondary, 0.4)}`,
+                "&:hover": {
+                  bgcolor: theme.surface,
+                  color: theme.primary,
+                  transform: "translateY(-2px)",
+                  boxShadow: `0 6px 20px ${alpha(theme.surface, 0.4)}`,
+                },
+                transition: "all 0.3s ease",
+              }}
+            >
+              Nueva Empresa
+            </Button>
+          </Box>
+        </Box>
+      </Fade>
+
+      {/* Search & Filter Section */}
+      <Fade in timeout={500}>
         <Box
           sx={{
             display: "flex",
             gap: 2,
             flexWrap: "wrap",
             alignItems: "center",
-            bgcolor: "white",
-            p: 2.5,
-            borderRadius: 2,
-            border: `2px solid #66FF99`,
-            boxShadow: "0 2px 8px rgba(102,255,153,0.06)",
+            bgcolor: theme.surface,
+            p: 3,
+            borderRadius: 3,
+            mb: 4,
+            border: `1px solid ${theme.border}`,
+            boxShadow: `0 2px 12px ${alpha(theme.primary, 0.04)}`,
           }}
         >
           <TextField
@@ -331,338 +862,1535 @@ export default function EmpresasPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{
               flexGrow: 1,
-              minWidth: 250,
-              borderRadius: 2,
-              bgcolor: "#F6F7F7",
+              minWidth: 280,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2.5,
+                bgcolor: theme.background,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  bgcolor: alpha(theme.secondary, 0.05),
+                },
+                "&.Mui-focused": {
+                  bgcolor: theme.surface,
+                  boxShadow: `0 0 0 3px ${alpha(theme.secondary, 0.2)}`,
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: theme.secondary,
+                    borderWidth: 2,
+                  },
+                },
+              },
             }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: "#284057" }} />
+                  <SearchIcon sx={{ color: theme.textSecondary }} />
                 </InputAdornment>
               ),
             }}
           />
 
-          <Button
-            variant="outlined"
-            startIcon={<FileDownloadIcon />}
-            onClick={handleExport}
-            disabled={filteredEmpresas.length === 0}
-            sx={{
-              borderColor: "#66FF99",
-              color: "#284057",
-              fontWeight: 600,
-              borderRadius: 2,
-              "&:hover": {
-                borderColor: "#196791",
-                bgcolor: "#66FF9910",
-                color: "#196791",
-              },
-            }}
-          >
-            Exportar
-          </Button>
-        </Box>
-      </Box>
-
-      <Grid container spacing={3}>
-        {filteredEmpresas.map((empresa) => (
-          <Grid item xs={12} sm={6} md={4} key={empresa.id}>
-            <Card
-              elevation={0}
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Chip
+              label={`Todas (${empresas.length})`}
+              onClick={() => setSearchTerm("")}
               sx={{
-                border: `2px solid #66FF99`,
-                borderRadius: 3,
-                height: "100%",
-                transition: "all 0.3s",
-                boxShadow: "0 2px 8px rgba(40,64,87,0.06)",
-                "&:hover": {
-                  boxShadow: "0 6px 18px rgba(40,64,87,0.12)",
-                  transform: "translateY(-2px)",
-                  borderColor: "#196791",
-                },
+                bgcolor: !searchTerm
+                  ? alpha(theme.primary, 0.1)
+                  : "transparent",
+                color: theme.textPrimary,
+                fontWeight: 600,
+                "&:hover": { bgcolor: alpha(theme.primary, 0.1) },
+              }}
+            />
+            <Chip
+              label={`Activas (${empresas.filter((e) => e.activo).length})`}
+              onClick={() => setSearchTerm("")}
+              sx={{
+                bgcolor: alpha(theme.success, 0.1),
+                color: theme.success,
+                fontWeight: 600,
+              }}
+            />
+          </Box>
+
+          <Tooltip title="Exportar a Excel" arrow>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<FileDownloadIcon />}
+                onClick={handleExport}
+                disabled={filteredEmpresas.length === 0 || loading}
+                sx={{
+                  borderColor: theme.border,
+                  color: theme.textPrimary,
+                  fontWeight: 600,
+                  borderRadius: 2.5,
+                  px: 3,
+                  "&:hover": {
+                    borderColor: theme.primaryHover,
+                    bgcolor: alpha(theme.primaryHover, 0.05),
+                    color: theme.primaryHover,
+                  },
+                  transition: "all 0.3s ease",
+                }}
+              >
+                Exportar
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+      </Fade>
+
+      {/* Loading State */}
+      {loading && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, 1fr)",
+              lg: "repeat(3, 1fr)",
+            },
+            gap: 3,
+          }}
+        >
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </Box>
+      )}
+
+      {/* Empty State */}
+      {!loading && filteredEmpresas.length === 0 && (
+        <EmptyState onAddNew={handleNew} />
+      )}
+
+      {/* Cards Grid */}
+      {!loading && filteredEmpresas.length > 0 && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, 1fr)",
+              lg: "repeat(3, 1fr)",
+            },
+            gap: 3,
+          }}
+        >
+          {filteredEmpresas.map((empresa, index) => (
+            <Box key={empresa.id}>
+              <Grow in timeout={400 + index * 100}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 4,
+                    height: "100%",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    position: "relative",
+                    overflow: "visible",
+                    "&:hover": {
+                      transform: "translateY(-6px)",
+                      boxShadow: `0 20px 40px ${alpha(theme.primary, 0.12)}`,
+                      borderColor: theme.secondary,
+                    },
+                  }}
+                >
+                  {/* Top bar with status and plan */}
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      left: 12,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      zIndex: 1,
+                    }}
+                  >
+                    <PlanBadge plan={empresa.plan || "basic"} />
+                    <Chip
+                      icon={
+                        empresa.activo ? (
+                          <CheckCircleIcon sx={{ fontSize: 14 }} />
+                        ) : (
+                          <CancelIcon sx={{ fontSize: 14 }} />
+                        )
+                      }
+                      label={empresa.activo ? "Activo" : "Inactivo"}
+                      size="small"
+                      sx={{
+                        bgcolor: empresa.activo
+                          ? alpha(theme.success, 0.1)
+                          : alpha(theme.textSecondary, 0.1),
+                        color: empresa.activo
+                          ? theme.success
+                          : theme.textSecondary,
+                        fontWeight: 600,
+                        fontSize: 11,
+                        height: 22,
+                        borderRadius: 1.5,
+                        "& .MuiChip-icon": { color: "inherit" },
+                      }}
+                    />
+                  </Box>
+
+                  <CardContent sx={{ p: 3, pt: 5 }}>
+                    {/* Header with Avatar */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        mb: 2,
+                        mt: 1,
+                      }}
+                    >
+                      <Avatar
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          bgcolor: empresa.primaryColor || theme.primary,
+                          fontSize: 20,
+                          fontWeight: 800,
+                          mr: 2,
+                          boxShadow: `0 4px 12px ${alpha(
+                            empresa.primaryColor || theme.primary,
+                            0.35
+                          )}`,
+                        }}
+                      >
+                        {getInitials(empresa.name)}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight={700}
+                          sx={{
+                            color: theme.textPrimary,
+                            lineHeight: 1.3,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {empresa.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: theme.primaryHover,
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          <LinkIcon sx={{ fontSize: 12 }} />/{empresa.slug}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Quick Stats Row */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1,
+                        p: 2,
+                        bgcolor: theme.background,
+                        borderRadius: 3,
+                        mb: 2,
+                      }}
+                    >
+                      <StatMini
+                        icon={
+                          <PeopleIcon
+                            sx={{ fontSize: 18, color: theme.info }}
+                          />
+                        }
+                        value={empresa.stats?.usuarios || 0}
+                        label="Usuarios"
+                        color={theme.info}
+                      />
+                      <StatMini
+                        icon={
+                          <DirectionsCarIcon
+                            sx={{ fontSize: 18, color: theme.warning }}
+                          />
+                        }
+                        value={empresa.stats?.vehiculos || 0}
+                        label="Vehículos"
+                        color={theme.warning}
+                      />
+                      <StatMini
+                        icon={
+                          <LocalGasStationIcon
+                            sx={{ fontSize: 18, color: theme.success }}
+                          />
+                        }
+                        value={empresa.stats?.eventosHoy || 0}
+                        label="Cargas hoy"
+                        color={theme.success}
+                      />
+                    </Box>
+
+                    {/* Monthly stats */}
+                    <Box sx={{ mb: 2 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          mb: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color={theme.textSecondary}
+                        >
+                          Eventos validados este mes
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          fontWeight={700}
+                          color={theme.primary}
+                        >
+                          {empresa.stats?.eventosValidados || 0}/
+                          {empresa.stats?.eventosMes || 0}
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={
+                          empresa.stats?.eventosMes
+                            ? ((empresa.stats?.eventosValidados || 0) /
+                                empresa.stats.eventosMes) *
+                              100
+                            : 0
+                        }
+                        sx={{
+                          height: 6,
+                          borderRadius: 3,
+                          bgcolor: alpha(theme.success, 0.1),
+                          "& .MuiLinearProgress-bar": {
+                            bgcolor: theme.success,
+                            borderRadius: 3,
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    {/* Action Buttons */}
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Tooltip title="Ver detalles" arrow>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          startIcon={<VisibilityIcon />}
+                          onClick={() => handleViewDetail(empresa)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderRadius: 2.5,
+                            borderColor: theme.border,
+                            color: theme.textPrimary,
+                            "&:hover": {
+                              borderColor: theme.primaryHover,
+                              bgcolor: alpha(theme.primaryHover, 0.05),
+                            },
+                          }}
+                        >
+                          Detalles
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Editar" arrow>
+                        <IconButton
+                          onClick={() => handleEdit(empresa)}
+                          sx={{
+                            bgcolor: alpha(theme.primaryHover, 0.1),
+                            color: theme.primaryHover,
+                            borderRadius: 2.5,
+                            "&:hover": {
+                              bgcolor: theme.primaryHover,
+                              color: theme.surface,
+                            },
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* Detail Drawer */}
+      <Drawer
+        anchor="right"
+        open={openDetailDrawer}
+        onClose={() => setOpenDetailDrawer(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 480 },
+            bgcolor: theme.background,
+          },
+        }}
+      >
+        {selectedEmpresa && (
+          <Box
+            sx={{ height: "100%", display: "flex", flexDirection: "column" }}
+          >
+            {/* Drawer Header */}
+            <Box
+              sx={{
+                p: 3,
+                bgcolor: selectedEmpresa.primaryColor || theme.primary,
+                color: theme.surface,
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <Avatar
                     sx={{
                       width: 64,
                       height: 64,
-                      bgcolor: empresa.primaryColor || "#284057",
+                      bgcolor: alpha(theme.surface, 0.2),
                       fontSize: 24,
-                      fontWeight: 700,
-                      mr: 2,
-                      border: `2px solid #66FF99`,
+                      fontWeight: 800,
                     }}
                   >
-                    {getInitials(empresa.name)}
+                    {getInitials(selectedEmpresa.name)}
                   </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography
-                      variant="h6"
-                      fontWeight="700"
-                      sx={{ mb: 0.5, color: "#284057" }}
-                    >
-                      {empresa.name}
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>
+                      {selectedEmpresa.name}
                     </Typography>
-                    <Chip
-                      label={empresa.activo ? "Activo" : "Inactivo"}
-                      size="small"
-                      sx={{
-                        bgcolor: empresa.activo ? "#66FF9915" : "#99999915",
-                        color: empresa.activo ? "#284057" : "#999",
-                        fontWeight: 700,
-                        height: 22,
-                        fontSize: 12,
-                        borderRadius: 1,
-                        border: empresa.activo
-                          ? `1.5px solid #66FF99`
-                          : undefined,
-                      }}
-                    />
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      /{selectedEmpresa.slug}
+                    </Typography>
                   </Box>
                 </Box>
+                <IconButton
+                  onClick={() => setOpenDetailDrawer(false)}
+                  sx={{ color: theme.surface }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ mb: 1.5 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
-                    >
-                      Slug
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="700"
-                      sx={{ color: "#196791" }}
-                    >
-                      {empresa.slug}
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <PlanBadge plan={selectedEmpresa.plan || "basic"} />
+                <Chip
+                  icon={
+                    selectedEmpresa.activo ? (
+                      <CheckCircleIcon />
+                    ) : (
+                      <CancelIcon />
+                    )
+                  }
+                  label={selectedEmpresa.activo ? "Activo" : "Inactivo"}
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(theme.surface, 0.2),
+                    color: theme.surface,
+                    fontWeight: 600,
+                    "& .MuiChip-icon": { color: "inherit" },
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Drawer Content */}
+            <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
+              {/* Stats Grid */}
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                color={theme.textPrimary}
+                sx={{ mb: 2 }}
+              >
+                Estadísticas del Mes
+              </Typography>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: 2,
+                  mb: 3,
+                }}
+              >
+                <Card
+                  elevation={0}
+                  sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3 }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <LocalGasStationIcon
+                      sx={{ color: theme.success, fontSize: 20 }}
+                    />
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Litros
                     </Typography>
                   </Box>
-
-                  <Box sx={{ mb: 1.5 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
-                    >
-                      Dominio
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="700"
-                      sx={{ color: "#196791" }}
-                    >
-                      {empresa.domain}
+                  <Typography
+                    variant="h5"
+                    fontWeight={700}
+                    color={theme.textPrimary}
+                  >
+                    {formatNumber(selectedEmpresa.stats?.litrosMes || 0)}
+                  </Typography>
+                </Card>
+                <Card
+                  elevation={0}
+                  sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3 }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <AttachMoneyIcon
+                      sx={{ color: theme.warning, fontSize: 20 }}
+                    />
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Costo
                     </Typography>
                   </Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight={700}
+                    color={theme.textPrimary}
+                  >
+                    {formatCurrency(selectedEmpresa.stats?.costoMes || 0)}
+                  </Typography>
+                </Card>
+                <Card
+                  elevation={0}
+                  sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3 }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <VerifiedIcon sx={{ color: theme.info, fontSize: 20 }} />
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Validados
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight={700}
+                    color={theme.textPrimary}
+                  >
+                    {selectedEmpresa.stats?.eventosValidados || 0}
+                  </Typography>
+                </Card>
+                <Card
+                  elevation={0}
+                  sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3 }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <TrendingUpIcon sx={{ color: theme.error, fontSize: 20 }} />
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Pendientes
+                    </Typography>
+                  </Box>
+                  <Typography variant="h5" fontWeight={700} color={theme.error}>
+                    {selectedEmpresa.stats?.eventosPendientes || 0}
+                  </Typography>
+                </Card>
+              </Box>
 
-                  <Box sx={{ mb: 1.5 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", mb: 0.3, color: "#284057" }}
-                    >
+              {/* Contact Info */}
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                color={theme.textPrimary}
+                sx={{ mb: 2 }}
+              >
+                Información de Contacto
+              </Typography>
+              <Card
+                elevation={0}
+                sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3, mb: 3 }}
+              >
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+                >
+                  <EmailIcon sx={{ color: theme.textSecondary }} />
+                  <Box>
+                    <Typography variant="caption" color={theme.textSecondary}>
                       Email Admin
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="700"
-                      sx={{ wordBreak: "break-word", color: "#196791" }}
-                    >
-                      {empresa.adminEmail}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 2,
-                        bgcolor: empresa.primaryColor,
-                        border: `2px solid #66FF99`,
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 2,
-                        bgcolor: empresa.secondaryColor,
-                        border: `2px solid #66FF99`,
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: "#284057" }}>
-                      Colores del tema
+                    <Typography variant="body2" fontWeight={600}>
+                      {selectedEmpresa.adminEmail}
                     </Typography>
                   </Box>
                 </Box>
-
-                <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                  <Button
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    startIcon={<LinkIcon />}
-                    onClick={() => copyLoginUrl(empresa)}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: 13,
-                      borderColor: "#66FF99",
-                      color: "#284057",
-                      fontWeight: 700,
-                      borderRadius: 2,
-                      "&:hover": {
-                        borderColor: "#196791",
-                        bgcolor: "#66FF9910",
-                        color: "#196791",
-                      },
-                    }}
-                  >
-                    Copiar URL
-                  </Button>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+                >
+                  <DomainIcon sx={{ color: theme.textSecondary }} />
+                  <Box>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Dominio
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {selectedEmpresa.domain}
+                    </Typography>
+                  </Box>
                 </Box>
-
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEdit(empresa)}
-                    sx={{
-                      bgcolor: "#66FF99",
-                      color: "#284057",
-                      borderRadius: 2,
-                      "&:hover": { bgcolor: "#196791", color: "#fff" },
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(empresa)}
-                    sx={{
-                      bgcolor: "#fee2e2",
-                      color: "#dc2626",
-                      borderRadius: 2,
-                      "&:hover": { bgcolor: "#fecaca" },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <CalendarTodayIcon sx={{ color: theme.textSecondary }} />
+                  <Box>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Fecha de registro
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {selectedEmpresa.createdAt}
+                    </Typography>
+                  </Box>
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+              </Card>
 
-      {filteredEmpresas.length === 0 && (
-        <Box sx={{ textAlign: "center", py: 8 }}>
-          <BusinessIcon sx={{ fontSize: 64, color: "#284057", mb: 2 }} />
-          <Typography variant="h6" sx={{ color: "#284057" }}>
-            No hay empresas registradas
-          </Typography>
-        </Box>
-      )}
+              {/* Policies */}
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                color={theme.textPrimary}
+                sx={{ mb: 2 }}
+              >
+                Políticas de Evidencias
+              </Typography>
+              <Card
+                elevation={0}
+                sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3, mb: 3 }}
+              >
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {selectedEmpresa.policies?.requiereFotoSurtidor && (
+                    <Chip
+                      icon={<PhotoCameraIcon />}
+                      label="Foto Surtidor"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.success, 0.1),
+                        color: theme.success,
+                      }}
+                    />
+                  )}
+                  {selectedEmpresa.policies?.requiereFotoOdometro && (
+                    <Chip
+                      icon={<SpeedIcon />}
+                      label="Foto Odómetro"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.success, 0.1),
+                        color: theme.success,
+                      }}
+                    />
+                  )}
+                  {selectedEmpresa.policies?.requiereFotoCuentaLitros && (
+                    <Chip
+                      icon={<PropaneTankIcon />}
+                      label="Foto Cuenta-litros"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.success, 0.1),
+                        color: theme.success,
+                      }}
+                    />
+                  )}
+                  {selectedEmpresa.policies?.requiereUbicacion && (
+                    <Chip
+                      icon={<LocationOnIcon />}
+                      label="Ubicación GPS"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.success, 0.1),
+                        color: theme.success,
+                      }}
+                    />
+                  )}
+                  {selectedEmpresa.policies?.requiereAudio && (
+                    <Chip
+                      icon={<MicIcon />}
+                      label="Audio"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.success, 0.1),
+                        color: theme.success,
+                      }}
+                    />
+                  )}
+                </Box>
+                <Divider sx={{ my: 2 }} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="body2" color={theme.textSecondary}>
+                    Litros máximo por carga
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {selectedEmpresa.policies?.litrosMaximoPorCarga} L
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2" color={theme.textSecondary}>
+                    Precio combustible
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    ${selectedEmpresa.policies?.precioCombustible}/L
+                  </Typography>
+                </Box>
+              </Card>
+            </Box>
 
-      {/* Dialog Crear/Editar */}
+            {/* Drawer Actions */}
+            <Box
+              sx={{
+                p: 3,
+                bgcolor: theme.surface,
+                borderTop: `1px solid ${theme.border}`,
+              }}
+            >
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={
+                    copiedId === selectedEmpresa.id ? (
+                      <CheckCircleIcon />
+                    ) : (
+                      <ContentCopyIcon />
+                    )
+                  }
+                  onClick={() => copyLoginUrl(selectedEmpresa)}
+                  sx={{
+                    borderColor:
+                      copiedId === selectedEmpresa.id
+                        ? theme.success
+                        : theme.border,
+                    color:
+                      copiedId === selectedEmpresa.id
+                        ? theme.success
+                        : theme.textPrimary,
+                    borderRadius: 2.5,
+                  }}
+                >
+                  {copiedId === selectedEmpresa.id ? "¡Copiado!" : "Copiar URL"}
+                </Button>
+              </Box>
+              <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => {
+                    setOpenDetailDrawer(false);
+                    handleEdit(selectedEmpresa);
+                  }}
+                  sx={{
+                    borderColor: theme.primaryHover,
+                    color: theme.primaryHover,
+                    borderRadius: 2.5,
+                  }}
+                >
+                  Editar
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => {
+                    setOpenDetailDrawer(false);
+                    handleDeleteClick(selectedEmpresa);
+                  }}
+                  sx={{
+                    borderColor: theme.error,
+                    color: theme.error,
+                    borderRadius: 2.5,
+                  }}
+                >
+                  Eliminar
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </Drawer>
+
+      {/* Create/Edit Dialog */}
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            boxShadow: `0 25px 50px ${alpha(theme.primary, 0.25)}`,
+            maxHeight: "90vh",
+          },
+        }}
       >
-        <DialogTitle sx={{ color: "#284057", fontWeight: 700 }}>
-          {editingEmpresa ? "Editar Empresa" : "Nueva Empresa"}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-            <TextField
-              label="Slug (identificador único)"
-              value={formData.slug}
-              onChange={(e) =>
-                setFormData({ ...formData, slug: e.target.value.toLowerCase() })
-              }
-              error={!!errors.slug}
-              helperText={errors.slug || "Ejemplo: empresaA, transportes-sur"}
-              required
-              disabled={!!editingEmpresa}
-              placeholder="empresaA"
-              fullWidth
-              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-            />
-
-            <TextField
-              label="Nombre de la Empresa"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              error={!!errors.name}
-              helperText={errors.name}
-              required
-              placeholder="Empresa A - Transportes"
-              fullWidth
-              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-            />
-
-            <TextField
-              label="Dominio"
-              value={formData.domain}
-              onChange={(e) =>
-                setFormData({ ...formData, domain: e.target.value })
-              }
-              error={!!errors.domain}
-              helperText={errors.domain || "Dominio de la empresa"}
-              required
-              placeholder="empresaA.com"
-              fullWidth
-              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-            />
-
-            <TextField
-              label="Email del Administrador"
-              type="email"
-              value={formData.adminEmail}
-              onChange={(e) =>
-                setFormData({ ...formData, adminEmail: e.target.value })
-              }
-              error={!!errors.adminEmail}
-              helperText={errors.adminEmail}
-              required
-              placeholder="admin@empresaA.com"
-              fullWidth
-              sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-            />
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <TextField
-                label="Color Primario"
-                type="color"
-                value={formData.primaryColor}
-                onChange={(e) =>
-                  setFormData({ ...formData, primaryColor: e.target.value })
-                }
-                fullWidth
-                sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-              />
-              <TextField
-                label="Color Secundario"
-                type="color"
-                value={formData.secondaryColor}
-                onChange={(e) =>
-                  setFormData({ ...formData, secondaryColor: e.target.value })
-                }
-                fullWidth
-                sx={{ borderRadius: 2, bgcolor: "#F6F7F7" }}
-              />
+        <DialogTitle
+          sx={{
+            bgcolor: theme.primary,
+            color: theme.surface,
+            py: 2.5,
+            px: 3,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2.5,
+                bgcolor: alpha(theme.secondary, 0.2),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {editingEmpresa ? (
+                <EditIcon sx={{ color: theme.secondary }} />
+              ) : (
+                <AddIcon sx={{ color: theme.secondary }} />
+              )}
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>
+                {editingEmpresa ? "Editar Empresa" : "Nueva Empresa"}
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                {editingEmpresa
+                  ? "Modifica los datos y políticas de la empresa"
+                  : "Configura un nuevo tenant para el sistema"}
+              </Typography>
             </Box>
           </Box>
+        </DialogTitle>
+
+        <Box
+          sx={{
+            borderBottom: 1,
+            borderColor: "divider",
+            bgcolor: theme.background,
+          }}
+        >
+          <Tabs
+            value={activeTab}
+            onChange={(_, v) => setActiveTab(v)}
+            sx={{
+              px: 3,
+              "& .MuiTab-root": {
+                textTransform: "none",
+                fontWeight: 600,
+                minHeight: 48,
+              },
+              "& .Mui-selected": {
+                color: theme.primary,
+              },
+              "& .MuiTabs-indicator": {
+                bgcolor: theme.secondary,
+                height: 3,
+              },
+            }}
+          >
+            <Tab
+              label="Datos Generales"
+              icon={<BusinessIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Apariencia"
+              icon={<PaletteIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Políticas"
+              icon={<SettingsIcon />}
+              iconPosition="start"
+            />
+          </Tabs>
+        </Box>
+
+        <DialogContent sx={{ p: 3 }}>
+          {/* Tab 0: General Data */}
+          <TabPanel value={activeTab} index={0}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" },
+                gap: 3,
+              }}
+            >
+              <Box>
+                <TextField
+                  label="Slug (identificador único)"
+                  value={formData.slug}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      slug: e.target.value.toLowerCase(),
+                    })
+                  }
+                  error={!!errors.slug}
+                  helperText={errors.slug || "Ejemplo: transportes-sur"}
+                  required
+                  disabled={!!editingEmpresa}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LinkIcon sx={{ color: theme.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  label="Nombre de la Empresa"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  error={!!errors.name}
+                  helperText={errors.name}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <BusinessIcon sx={{ color: theme.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  label="Dominio"
+                  value={formData.domain}
+                  onChange={(e) =>
+                    setFormData({ ...formData, domain: e.target.value })
+                  }
+                  error={!!errors.domain}
+                  helperText={errors.domain}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <DomainIcon sx={{ color: theme.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  label="Email del Administrador"
+                  type="email"
+                  value={formData.adminEmail}
+                  onChange={(e) =>
+                    setFormData({ ...formData, adminEmail: e.target.value })
+                  }
+                  error={!!errors.adminEmail}
+                  helperText={errors.adminEmail}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailIcon sx={{ color: theme.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  label="Teléfono Admin"
+                  value={formData.adminPhone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, adminPhone: e.target.value })
+                  }
+                  fullWidth
+                  placeholder="+54 11 1234-5678"
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  select
+                  label="Plan"
+                  value={formData.plan}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      plan: e.target.value as
+                        | "basic"
+                        | "professional"
+                        | "enterprise",
+                    })
+                  }
+                  fullWidth
+                  SelectProps={{ native: true }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                >
+                  <option value="basic">Básico</option>
+                  <option value="professional">Profesional</option>
+                  <option value="enterprise">Enterprise</option>
+                </TextField>
+              </Box>
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.activo}
+                      onChange={(e) =>
+                        setFormData({ ...formData, activo: e.target.checked })
+                      }
+                      sx={{
+                        "& .MuiSwitch-switchBase.Mui-checked": {
+                          color: theme.success,
+                        },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                          { bgcolor: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        Empresa Activa
+                      </Typography>
+                      <Typography variant="caption" color={theme.textSecondary}>
+                        Los usuarios podrán acceder al sistema
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    p: 2,
+                    m: 0,
+                    bgcolor: theme.background,
+                    borderRadius: 3,
+                    width: "100%",
+                  }}
+                />
+              </Box>
+            </Box>
+          </TabPanel>
+
+          {/* Tab 1: Appearance */}
+          <TabPanel value={activeTab} index={1}>
+            <Typography
+              variant="body2"
+              color={theme.textSecondary}
+              sx={{ mb: 3 }}
+            >
+              Personaliza los colores del tema para esta empresa. Estos colores
+              se aplicarán en el dashboard del tenant.
+            </Typography>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" },
+                gap: 3,
+              }}
+            >
+              <Box
+                sx={{
+                  p: 3,
+                  bgcolor: theme.background,
+                  borderRadius: 3,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+                  Color Primario
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box
+                    component="input"
+                    type="color"
+                    value={formData.primaryColor}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({
+                        ...formData,
+                        primaryColor: e.target.value,
+                      })
+                    }
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      border: "none",
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      "&::-webkit-color-swatch-wrapper": { p: 0 },
+                      "&::-webkit-color-swatch": {
+                        borderRadius: 2,
+                        border: `2px solid ${theme.border}`,
+                      },
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {formData.primaryColor}
+                    </Typography>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Headers, botones principales
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  p: 3,
+                  bgcolor: theme.background,
+                  borderRadius: 3,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+                  Color Secundario
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box
+                    component="input"
+                    type="color"
+                    value={formData.secondaryColor}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFormData({
+                        ...formData,
+                        secondaryColor: e.target.value,
+                      })
+                    }
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      border: "none",
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      "&::-webkit-color-swatch-wrapper": { p: 0 },
+                      "&::-webkit-color-swatch": {
+                        borderRadius: 2,
+                        border: `2px solid ${theme.border}`,
+                      },
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {formData.secondaryColor}
+                    </Typography>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Acentos, iconos destacados
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  gridColumn: "1 / -1",
+                  p: 3,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${
+                    formData.primaryColor
+                  } 0%, ${alpha(formData.primaryColor, 0.8)} 100%)`,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={700}
+                  sx={{ color: "#fff", mb: 1 }}
+                >
+                  Vista previa del tema
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: alpha("#fff", 0.8), mb: 2 }}
+                >
+                  Así se verá el header del dashboard
+                </Typography>
+                <Button
+                  variant="contained"
+                  sx={{
+                    bgcolor: formData.secondaryColor,
+                    color: formData.primaryColor,
+                    fontWeight: 600,
+                    textTransform: "none",
+                    "&:hover": {
+                      bgcolor: alpha(formData.secondaryColor, 0.9),
+                    },
+                  }}
+                >
+                  Botón de ejemplo
+                </Button>
+              </Box>
+            </Box>
+          </TabPanel>
+
+          {/* Tab 2: Policies */}
+          <TabPanel value={activeTab} index={2}>
+            <Typography
+              variant="body2"
+              color={theme.textSecondary}
+              sx={{ mb: 3 }}
+            >
+              Configura las políticas de captura de datos para los eventos de
+              carga de combustible vía WhatsApp.
+            </Typography>
+
+            <Typography
+              variant="subtitle2"
+              fontWeight={700}
+              color={theme.primary}
+              sx={{ mb: 2 }}
+            >
+              Evidencias Obligatorias
+            </Typography>
+            <Card
+              elevation={0}
+              sx={{ p: 2, bgcolor: theme.background, borderRadius: 3, mb: 3 }}
+            >
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.policies.requiereFotoSurtidor}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          policies: {
+                            ...formData.policies,
+                            requiereFotoSurtidor: e.target.checked,
+                          },
+                        })
+                      }
+                      sx={{
+                        color: theme.primary,
+                        "&.Mui-checked": { color: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <PhotoCameraIcon
+                        sx={{ fontSize: 20, color: theme.textSecondary }}
+                      />
+                      <Typography variant="body2">Foto del surtidor</Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.policies.requiereFotoOdometro}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          policies: {
+                            ...formData.policies,
+                            requiereFotoOdometro: e.target.checked,
+                          },
+                        })
+                      }
+                      sx={{
+                        color: theme.primary,
+                        "&.Mui-checked": { color: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <SpeedIcon
+                        sx={{ fontSize: 20, color: theme.textSecondary }}
+                      />
+                      <Typography variant="body2">
+                        Foto del odómetro/horómetro
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.policies.requiereFotoCuentaLitros}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          policies: {
+                            ...formData.policies,
+                            requiereFotoCuentaLitros: e.target.checked,
+                          },
+                        })
+                      }
+                      sx={{
+                        color: theme.primary,
+                        "&.Mui-checked": { color: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <PropaneTankIcon
+                        sx={{ fontSize: 20, color: theme.textSecondary }}
+                      />
+                      <Typography variant="body2">
+                        Foto del cuenta-litros
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.policies.requiereUbicacion}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          policies: {
+                            ...formData.policies,
+                            requiereUbicacion: e.target.checked,
+                          },
+                        })
+                      }
+                      sx={{
+                        color: theme.primary,
+                        "&.Mui-checked": { color: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <LocationOnIcon
+                        sx={{ fontSize: 20, color: theme.textSecondary }}
+                      />
+                      <Typography variant="body2">Geolocalización</Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.policies.requiereAudio}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          policies: {
+                            ...formData.policies,
+                            requiereAudio: e.target.checked,
+                          },
+                        })
+                      }
+                      sx={{
+                        color: theme.primary,
+                        "&.Mui-checked": { color: theme.success },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <MicIcon
+                        sx={{ fontSize: 20, color: theme.textSecondary }}
+                      />
+                      <Typography variant="body2">Nota de voz</Typography>
+                    </Box>
+                  }
+                />
+              </FormGroup>
+            </Card>
+
+            <Typography
+              variant="subtitle2"
+              fontWeight={700}
+              color={theme.primary}
+              sx={{ mb: 2 }}
+            >
+              Umbrales y Precios
+            </Typography>
+            <Card
+              elevation={0}
+              sx={{ p: 3, bgcolor: theme.background, borderRadius: 3, mb: 3 }}
+            >
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                  Litros máximo por carga:{" "}
+                  {formData.policies.litrosMaximoPorCarga} L
+                </Typography>
+                <Slider
+                  value={formData.policies.litrosMaximoPorCarga}
+                  onChange={(_, value) =>
+                    setFormData({
+                      ...formData,
+                      policies: {
+                        ...formData.policies,
+                        litrosMaximoPorCarga: value as number,
+                      },
+                    })
+                  }
+                  min={50}
+                  max={1000}
+                  step={50}
+                  marks={[
+                    { value: 50, label: "50L" },
+                    { value: 500, label: "500L" },
+                    { value: 1000, label: "1000L" },
+                  ]}
+                  sx={{
+                    color: theme.primary,
+                    "& .MuiSlider-thumb": { bgcolor: theme.secondary },
+                  }}
+                />
+              </Box>
+              <TextField
+                label="Precio por litro (USD)"
+                type="number"
+                value={formData.policies.precioCombustible}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    policies: {
+                      ...formData.policies,
+                      precioCombustible: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">$</InputAdornment>
+                  ),
+                }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+              />
+            </Card>
+
+            <Typography
+              variant="subtitle2"
+              fontWeight={700}
+              color={theme.primary}
+              sx={{ mb: 2 }}
+            >
+              Validación
+            </Typography>
+            <Card
+              elevation={0}
+              sx={{ p: 2, bgcolor: theme.background, borderRadius: 3 }}
+            >
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.policies.alertaDuplicados}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        policies: {
+                          ...formData.policies,
+                          alertaDuplicados: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      Alerta de duplicados
+                    </Typography>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Detectar cargas duplicadas en poco tiempo
+                    </Typography>
+                  </Box>
+                }
+                sx={{ width: "100%", m: 0 }}
+              />
+              <Divider sx={{ my: 1.5 }} />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.policies.validacionAutomatica}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        policies: {
+                          ...formData.policies,
+                          validacionAutomatica: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      Validación automática
+                    </Typography>
+                    <Typography variant="caption" color={theme.textSecondary}>
+                      Aprobar eventos automáticamente si cumplen todas las
+                      políticas
+                    </Typography>
+                  </Box>
+                }
+                sx={{ width: "100%", m: 0 }}
+              />
+            </Card>
+          </TabPanel>
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions
+          sx={{ p: 3, pt: 0, gap: 1.5, bgcolor: theme.background }}
+        >
           <Button
             onClick={() => setOpenDialog(false)}
-            sx={{ color: "#284057", fontWeight: 700 }}
+            sx={{
+              color: theme.textSecondary,
+              fontWeight: 600,
+              px: 3,
+              borderRadius: 2.5,
+            }}
           >
             Cancelar
           </Button>
@@ -670,11 +2398,15 @@ export default function EmpresasPage() {
             variant="contained"
             onClick={handleSave}
             sx={{
-              bgcolor: "#66FF99",
-              color: "#284057",
+              bgcolor: theme.primary,
+              color: theme.surface,
               fontWeight: 700,
-              borderRadius: 2,
-              "&:hover": { bgcolor: "#196791", color: "#fff" },
+              px: 4,
+              borderRadius: 2.5,
+              boxShadow: `0 4px 14px ${alpha(theme.primary, 0.35)}`,
+              "&:hover": {
+                bgcolor: theme.primaryHover,
+              },
             }}
           >
             {editingEmpresa ? "Guardar Cambios" : "Crear Empresa"}
@@ -682,38 +2414,87 @@ export default function EmpresasPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog Eliminar */}
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            maxWidth: 420,
+            boxShadow: `0 25px 50px ${alpha(theme.error, 0.2)}`,
+          },
+        }}
       >
-        <DialogTitle sx={{ color: "#dc2626", fontWeight: 700 }}>
-          Confirmar Eliminación
+        <DialogTitle sx={{ textAlign: "center", pt: 4, pb: 2 }}>
+          <Box
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              bgcolor: alpha(theme.error, 0.1),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 2,
+            }}
+          >
+            <WarningAmberIcon sx={{ fontSize: 36, color: theme.error }} />
+          </Box>
+          <Typography variant="h6" fontWeight={700} color={theme.textPrimary}>
+            Confirmar Eliminación
+          </Typography>
         </DialogTitle>
-        <DialogContent>
-          <Typography>
+
+        <DialogContent sx={{ textAlign: "center", px: 4 }}>
+          <Typography sx={{ color: theme.textSecondary, mb: 2 }}>
             ¿Estás seguro de eliminar la empresa{" "}
-            <strong>{deleteEmpresa?.name}</strong>?
+            <Box component="span" fontWeight={700} color={theme.textPrimary}>
+              {deleteEmpresa?.name}
+            </Box>
+            ?
           </Typography>
-          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-            Esta acción no se puede deshacer y eliminará todos los datos
-            asociados.
-          </Typography>
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: alpha(theme.error, 0.05),
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.error, 0.2)}`,
+            }}
+          >
+            <Typography variant="body2" color={theme.error} fontWeight={500}>
+              ⚠️ Esta acción eliminará todos los usuarios, vehículos, eventos y
+              datos asociados a este tenant.
+            </Typography>
+          </Box>
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions sx={{ p: 3, gap: 1.5, justifyContent: "center" }}>
           <Button
             onClick={() => setOpenDeleteDialog(false)}
-            sx={{ color: "#284057", fontWeight: 700 }}
+            sx={{
+              color: theme.textSecondary,
+              fontWeight: 600,
+              px: 4,
+              borderRadius: 2.5,
+            }}
           >
             Cancelar
           </Button>
           <Button
             variant="contained"
-            color="error"
             onClick={handleDelete}
-            sx={{ borderRadius: 2, fontWeight: 700 }}
+            sx={{
+              bgcolor: theme.error,
+              color: theme.surface,
+              fontWeight: 700,
+              px: 4,
+              borderRadius: 2.5,
+              "&:hover": { bgcolor: "#DC2626" },
+            }}
           >
-            Eliminar
+            Eliminar Empresa
           </Button>
         </DialogActions>
       </Dialog>

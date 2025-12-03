@@ -10,18 +10,26 @@ export function Routing() {
     <Routes> 
       {appRoutes.map((route, i) => (
         <Route key={`app-${i}`} path={route.path} element={route.element}>
-          {route.children?.map((child, j) => (
-            <Route key={`app-child-${j}`} path={child.path} element={child.element} />
-          ))}
+          {route.children?.map((child, j) =>
+            child.index ? (
+              <Route key={`app-child-${j}`} index element={child.element} />
+            ) : (
+              <Route key={`app-child-${j}`} path={child.path} element={child.element} />
+            )
+          )}
         </Route>
       ))}
 
       {/* Rutas de Tenant (empresa.local/s) */}
       {tenantRoutes.map((route, i) => (
         <Route key={`tenant-${i}`} path={route.path} element={route.element}>
-          {route.children?.map((child, j) => (
-            <Route key={`tenant-child-${j}`} path={child.path} element={child.element} />
-          ))}
+          {route.children?.map((child, j) =>
+            child.index ? (
+              <Route key={`tenant-child-${j}`} index element={child.element} />
+            ) : (
+              <Route key={`tenant-child-${j}`} path={child.path} element={child.element} />
+            )
+          )}
         </Route>
       ))}
 

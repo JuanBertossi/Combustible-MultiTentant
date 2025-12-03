@@ -12,7 +12,15 @@ interface AdminAuthGuardProps {
 export function AdminAuthGuard({ children, requireRole }: AdminAuthGuardProps) {
   const { user, isLoading, isAuthenticated } = useAdminAuth();
 
+  console.log("🛡️ AdminAuthGuard:", {
+    isLoading,
+    isAuthenticated,
+    user,
+    requireRole,
+  });
+
   if (isLoading) {
+    console.log("🛡️ AdminAuthGuard: Loading...");
     return (
       <Box
         sx={{
@@ -28,12 +36,17 @@ export function AdminAuthGuard({ children, requireRole }: AdminAuthGuardProps) {
   }
 
   if (!isAuthenticated) {
+    console.log("🛡️ AdminAuthGuard: No autenticado, redirigiendo a login");
     return <Navigate to="/a/login" replace />;
   }
 
   if (requireRole && user?.role !== requireRole) {
+    console.log(
+      "🛡️ AdminAuthGuard: Rol incorrecto, redirigiendo a unauthorized"
+    );
     return <Navigate to="/unauthorized" replace />;
   }
 
+  console.log("🛡️ AdminAuthGuard: ✅ Acceso permitido");
   return <>{children}</>;
 }

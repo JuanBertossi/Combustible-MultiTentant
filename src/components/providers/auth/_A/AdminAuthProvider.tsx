@@ -35,10 +35,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     if (currentUser?.role === "superadmin") {
       setUser(currentUser);
-    } else {
-      // si no es superadmin, no lo consideres logueado en /a
-      authService.logout();
     }
+    // No llamamos logout aquí - solo no establecemos el usuario
     setIsLoading(false);
   }, []);
 
