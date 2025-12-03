@@ -369,7 +369,14 @@ export default function CentroCostoPage() {
       {/* Grid de Items */}
       <Grid container spacing={3}>
         {filteredItems.map((item) => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            key={item.id}
+            sx={{ display: "flex" }}
+          >
             <Card
               elevation={0}
               sx={{
@@ -377,6 +384,8 @@ export default function CentroCostoPage() {
                 borderRadius: 3,
                 border: "1px solid #e2e8f0",
                 height: "100%",
+                width: 500,
+                maxWidth: "100%",
                 transition: "all 0.25s ease",
                 "&:hover": {
                   boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
@@ -385,109 +394,122 @@ export default function CentroCostoPage() {
                 },
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    mb: 2.5,
-                    gap: 1.5,
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      bgcolor: getTipoColor(item.tipo),
-                      color: "white",
-                    }}
-                  >
-                    <AccountTreeIcon />
-                  </Avatar>
-
-                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        fontWeight: 700,
-                        mb: 0.3,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {item.codigo}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#64748b",
-                        mb: 0.75,
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {item.nombre}
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                      <Chip
-                        label={item.tipo}
-                        size="small"
-                        sx={{
-                          bgcolor: `${getTipoColor(item.tipo)}15`,
-                          color: getTipoColor(item.tipo),
-                          fontWeight: 600,
-                          height: 22,
-                          fontSize: 11,
-                        }}
-                      />
-                      <Chip
-                        label={item.activo ? "Activo" : "Inactivo"}
-                        size="small"
-                        sx={{
-                          bgcolor: item.activo ? "#10b98115" : "#e5e7eb",
-                          color: item.activo ? "#10b981" : "#6b7280",
-                          fontWeight: 600,
-                          height: 22,
-                          fontSize: 11,
-                        }}
-                      />
-                    </Box>
-                  </Box>
-
+              <CardContent
+                sx={{
+                  p: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
+                {/* Header + info principal */}
+                <Box sx={{ flexGrow: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
-                      flexDirection: "column",
-                      gap: 1,
-                      ml: 0.5,
+                      alignItems: "flex-start",
+                      mb: 2.5,
+                      gap: 1.5,
                     }}
                   >
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(item)}
+                    <Avatar
                       sx={{
-                        bgcolor: "#eef2ff",
-                        color: "#1d4ed8",
-                        "&:hover": { bgcolor: "#e0e7ff" },
+                        width: 52,
+                        height: 52,
+                        bgcolor: getTipoColor(item.tipo),
+                        color: "white",
                       }}
                     >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(item)}
+                      <AccountTreeIcon />
+                    </Avatar>
+
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 700,
+                          mb: 0.3,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {item.codigo}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#64748b",
+                          mb: 0.75,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {item.nombre}
+                      </Typography>
+                      <Box
+                        sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}
+                      >
+                        <Chip
+                          label={item.tipo}
+                          size="small"
+                          sx={{
+                            bgcolor: `${getTipoColor(item.tipo)}15`,
+                            color: getTipoColor(item.tipo),
+                            fontWeight: 600,
+                            height: 22,
+                            fontSize: 11,
+                          }}
+                        />
+                        <Chip
+                          label={item.activo ? "Activo" : "Inactivo"}
+                          size="small"
+                          sx={{
+                            bgcolor: item.activo ? "#10b98115" : "#e5e7eb",
+                            color: item.activo ? "#10b981" : "#6b7280",
+                            fontWeight: 600,
+                            height: 22,
+                            fontSize: 11,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+
+                    <Box
                       sx={{
-                        bgcolor: "#fee2e2",
-                        color: "#dc2626",
-                        "&:hover": { bgcolor: "#fecaca" },
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        ml: 0.5,
                       }}
                     >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(item)}
+                        sx={{
+                          bgcolor: "#eef2ff",
+                          color: "#1d4ed8",
+                          "&:hover": { bgcolor: "#e0e7ff" },
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(item)}
+                        sx={{
+                          bgcolor: "#fee2e2",
+                          color: "#dc2626",
+                          "&:hover": { bgcolor: "#fecaca" },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </Box>
                 </Box>
 
-                {user?.role === "superadmin" && (
+                {/* Footer: empresa solo para admin */}
+                {user?.role === "admin" && (
                   <Box sx={{ mt: 1 }}>
                     <Typography
                       variant="caption"
