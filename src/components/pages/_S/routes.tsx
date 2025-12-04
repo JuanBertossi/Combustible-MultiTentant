@@ -2,7 +2,7 @@ import { type RouteObject } from "react-router";
 import { TenantAuthGuard } from "@/components/guards/tenant-auth.guard";
 import DashboardLayout from "@/components/pages/_S/Layout/DashboardLayout";
 import LoginPage from "@/components/pages/_S/Login/LoginPage";
-import Dashboard from "@/components/pages/_S/Dashboard/Dashboard"; 
+import Dashboard from "@/components/pages/_S/Dashboard/Dashboard";
 import { Navigate } from "react-router-dom";
 import ChoferesPage from "@/components/pages/_S/Choferes/ChoferesPage";
 import CentroCostoPage from "@/components/pages/_S/CentroCosto/CentrosCostoPage";
@@ -16,6 +16,7 @@ import TanquesPage from "@/components/pages/_S/Tanques/TanquesPage";
 import UsuariosPage from "@/components/pages/_S/Usuarios/UsuariosPage";
 import ValidacionPage from "@/components/pages/_S/Validacion/ValidacionEventosPage";
 import VehiculosPage from "@/components/pages/_S/Vehiculos/VehiculosPage";
+import UnidadesNegocioPage from "@/components/pages/_S/UnidadesNegocio/UnidadesNegocioPage";
 
 export const tenantRoutes: RouteObject[] = [
   {
@@ -31,19 +32,25 @@ export const tenantRoutes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <Navigate to="/s/dashboard" replace /> },
-      { path: "dashboard", element: <Dashboard /> }, 
-      { path: "vehiculos", element: <VehiculosPage /> },
-      { path: "choferes", element: <ChoferesPage /> },
+      { path: "dashboard", element: <Dashboard /> },
+      // Administración (solo admin)
+      { path: "unidades", element: <UnidadesNegocioPage /> },
+      { path: "usuarios", element: <UsuariosPage /> },
       { path: "centro-costo", element: <CentroCostoPage /> },
       { path: "configuracion", element: <ConfiguracionPage /> },
-      { path: "demo", element: <DemoPage /> },
-      { path: "empresas", element: <EmpresasPage /> },
+      // Flota
+      { path: "vehiculos", element: <VehiculosPage /> },
+      { path: "choferes", element: <ChoferesPage /> },
+      // Combustible
       { path: "eventos", element: <EventosPage /> },
-      { path: "reportes", element: <ReportesPage /> },
+      { path: "validacion", element: <ValidacionPage /> },
       { path: "surtidores", element: <SurtidoresPage /> },
       { path: "tanques", element: <TanquesPage /> },
-      { path: "usuarios", element: <UsuariosPage /> },
-      { path: "validacion", element: <ValidacionPage /> },
+      // Reportes
+      { path: "reportes", element: <ReportesPage /> },
+      // Legacy/Demo
+      { path: "empresas", element: <EmpresasPage /> },
+      { path: "demo", element: <DemoPage /> },
     ],
   },
 ];

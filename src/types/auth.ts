@@ -25,7 +25,13 @@ export type Permission =
   | "eventos:validar"
   | "eventos:ver"
   | "vehiculos:gestionar"
+  | "choferes:gestionar"
+  | "surtidores:gestionar"
+  | "tanques:gestionar"
+  | "centros-costo:gestionar"
   | "usuarios:gestionar"
+  | "unidades:ver"
+  | "unidades:gestionar"
   | "reportes:ver"
   | "reportes:exportar"
   | "configuracion:editar"
@@ -33,6 +39,10 @@ export type Permission =
 
 /**
  * Mapeo de roles a permisos
+ * - admin: Ve TODO de la empresa, gestiona unidades y usuarios
+ * - supervisor: Ve solo su(s) unidad(es) asignada(s), valida eventos
+ * - operador: Solo WhatsApp (no usa el sistema web)
+ * - auditor: Solo lectura de su unidad asignada
  */
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   superadmin: [
@@ -42,30 +52,53 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "reportes:exportar",
   ],
   admin: [
+    // Gestión completa de la empresa
+    "unidades:ver",
+    "unidades:gestionar",
+    "usuarios:gestionar",
+    "configuracion:editar",
+    // Gestión de recursos
+    "vehiculos:gestionar",
+    "choferes:gestionar",
+    "surtidores:gestionar",
+    "tanques:gestionar",
+    "centros-costo:gestionar",
+    // Eventos
     "eventos:crear",
     "eventos:editar",
     "eventos:eliminar",
     "eventos:validar",
     "eventos:ver",
-    "vehiculos:gestionar",
-    "usuarios:gestionar",
+    // Reportes
     "reportes:ver",
     "reportes:exportar",
-    "configuracion:editar",
   ],
   supervisor: [
+    // Solo ve su(s) unidad(es), no gestiona
+    "unidades:ver",
+    // Puede crear usuarios solo para su unidad (operadores y auditores)
+    "usuarios:gestionar",
+    // Gestión limitada de recursos de su unidad
+    "vehiculos:gestionar",
+    "choferes:gestionar",
+    "centros-costo:gestionar",
+    // Eventos de su unidad
     "eventos:crear",
     "eventos:editar",
     "eventos:validar",
     "eventos:ver",
+    // Reportes de su unidad
     "reportes:ver",
     "reportes:exportar",
   ],
   operador: [
+    // Solo WhatsApp, acceso mínimo web
     "eventos:crear",
     "eventos:ver",
   ],
   auditor: [
+    // Solo lectura
+    "unidades:ver",
     "eventos:ver",
     "reportes:ver",
     "reportes:exportar",
@@ -82,10 +115,54 @@ export interface User {
   role: UserRole;
   empresaId: number | null;
   empresaSubdomain?: string | null;
+  
+  /**
+   * IDs de unidades de negocio asignadas al usuario
+   * - admin: array vacío (ve todas las unidades)
+   * - supervisor/auditor: IDs de unidades específicas asignadas
+   * - operador: ID de su unidad (solo una)
+   */
+  unidadesAsignadas: number[];
+  
   avatar?: string;
+  telefono?: string;
   permissions?: Permission[];
   createdAt?: string;
+  updatedAt?: string;
   lastLoginAt?: string;
+}
+
+/**
+ * Datos para crear/editar un usuario
+ */
+export interface UserFormData {
+  email: string;
+  name: string;
+  password?: string;
+  role: UserRole;
+  unidadesAsignadas: number[];
+  telefono?: string;
+  avatar?: string;
+}
+
+/**
+ * Verifica si el usuario puede ver todas las unidades
+ */
+export function canViewAllUnits(user: User | null): boolean {
+  if (!user) return false;
+  // Admin ve todas, supervisor/auditor solo las asignadas
+  return user.role === "admin" || user.role === "superadmin";
+}
+
+/**
+ * Verifica si el usuario tiene acceso a una unidad específica
+ */
+export function canAccessUnit(user: User | null, unidadId: number): boolean {
+  if (!user) return false;
+  // Admin y superadmin acceden a todo
+  if (user.role === "admin" || user.role === "superadmin") return true;
+  // Otros roles solo si está en sus unidades asignadas
+  return user.unidadesAsignadas.includes(unidadId);
 }
 
 /**

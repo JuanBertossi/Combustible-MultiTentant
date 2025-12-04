@@ -4,6 +4,9 @@
 // Empresas
 export * from "./useEmpresas";
 
+// Unidades de Negocio
+export * from "./useUnidades";
+
 // Eventos
 export * from "./useEventos";
 

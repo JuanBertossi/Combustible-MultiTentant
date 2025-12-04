@@ -1,4 +1,4 @@
-// components/layout/Sidebar.tsx
+// src/components/pages/_S/Layout/Sidebar.tsx
 import { useState } from "react";
 import {
   List,
@@ -11,6 +11,7 @@ import {
   Typography,
   Divider,
   Collapse,
+  Chip,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
@@ -28,9 +29,11 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PropaneTankIcon from "@mui/icons-material/PropaneTank";
+import StoreIcon from "@mui/icons-material/Store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTenantStore } from "@/stores/tenant.store";
-import type { UserRole } from "@/types";
+import { useUnidadStore } from "@/stores/unidad.store";
+import type { UserRole, Permission } from "@/types";
 
 const DRAWER_WIDTH = 260;
 
@@ -38,114 +41,156 @@ interface MenuItem {
   label: string;
   icon: React.ReactNode;
   path?: string;
+  // Roles que pueden ver este item
   roles: UserRole[];
+  // Permiso requerido (alternativa a roles)
+  permission?: Permission;
+  // Sub-items
   submenu?: MenuItem[];
+  // Badge para mostrar contadores
+  badge?: number;
 }
 
+/**
+ * Estructura del menú según el modelo de negocio:
+ * - Admin: Ve todo, incluyendo gestión de unidades y usuarios
+ * - Supervisor: Ve solo su unidad, gestiona flota, usuarios de su unidad y valida eventos
+ * - Auditor: Solo lectura de su unidad
+ * - Operador: Solo WhatsApp (acceso mínimo web)
+ */
 const menuStructure: MenuItem[] = [
+  // Dashboard - todos
   {
     label: "Dashboard",
     icon: <DashboardIcon />,
     path: "/s/dashboard",
-    roles: ["superadmin", "admin", "supervisor", "operador", "auditor"],
+    roles: ["admin", "supervisor", "auditor"],
   },
+
+  // Administración - Admin y Supervisor (con diferentes alcances)
   {
     label: "Administración",
     icon: <AdminPanelSettingsIcon />,
-    roles: ["superadmin", "admin"],
+    roles: ["admin", "supervisor"],
     submenu: [
       {
-        label: "Empresas",
-        icon: <BusinessIcon />,
-        path: "/s/empresas",
-        roles: ["superadmin"],
+        label: "Unidades de Negocio",
+        icon: <StoreIcon />,
+        path: "/s/unidades",
+        roles: ["admin"], // Solo admin gestiona unidades
+        permission: "unidades:gestionar",
       },
       {
         label: "Usuarios",
         icon: <PeopleIcon />,
         path: "/s/usuarios",
-        roles: ["superadmin", "admin"],
+        roles: ["admin", "supervisor"], // Supervisor puede crear usuarios de su unidad
+        permission: "usuarios:gestionar",
       },
       {
         label: "Centros de Costo",
         icon: <AccountTreeIcon />,
         path: "/s/centro-costo",
-        roles: ["superadmin", "admin"],
+        roles: ["admin", "supervisor"],
+        permission: "centros-costo:gestionar",
       },
     ],
   },
+
+  // Flota - Admin y Supervisor (de su unidad)
   {
     label: "Flota",
     icon: <LocalShippingIcon />,
-    roles: ["superadmin", "admin", "supervisor"],
+    roles: ["admin", "supervisor"],
     submenu: [
       {
         label: "Vehículos",
         icon: <DirectionsCarIcon />,
         path: "/s/vehiculos",
-        roles: ["superadmin", "admin", "supervisor"],
+        roles: ["admin", "supervisor"],
+        permission: "vehiculos:gestionar",
       },
       {
         label: "Choferes",
         icon: <PersonIcon />,
         path: "/s/choferes",
-        roles: ["superadmin", "admin", "supervisor"],
+        roles: ["admin", "supervisor"],
+        permission: "choferes:gestionar",
       },
     ],
   },
+
+  // Combustible - Admin, Supervisor y vista lectura para Auditor
   {
     label: "Combustible",
     icon: <LocalGasStationIcon />,
-    roles: ["superadmin", "admin", "supervisor", "operador"],
+    roles: ["admin", "supervisor", "auditor"],
     submenu: [
       {
         label: "Eventos",
         icon: <LocalGasStationIcon />,
         path: "/s/eventos",
-        roles: ["superadmin", "admin", "supervisor", "operador"],
+        roles: ["admin", "supervisor", "auditor"],
+        permission: "eventos:ver",
       },
       {
         label: "Validación",
         icon: <CheckCircleIcon />,
         path: "/s/validacion",
-        roles: ["superadmin", "admin", "supervisor"],
+        roles: ["admin", "supervisor"],
+        permission: "eventos:validar",
       },
       {
         label: "Surtidores",
         icon: <LocalGasStationIcon />,
         path: "/s/surtidores",
-        roles: ["superadmin", "admin"],
+        roles: ["admin"],
+        permission: "surtidores:gestionar",
       },
       {
         label: "Tanques",
         icon: <PropaneTankIcon />,
         path: "/s/tanques",
-        roles: ["superadmin", "admin"],
+        roles: ["admin"],
+        permission: "tanques:gestionar",
       },
     ],
   },
+
+  // Reportes - Admin, Supervisor y Auditor
   {
     label: "Reportes",
     icon: <AssessmentIcon />,
     path: "/s/reportes",
-    roles: ["superadmin", "admin", "supervisor", "auditor"],
+    roles: ["admin", "supervisor", "auditor"],
+    permission: "reportes:ver",
   },
+
+  // Configuración - solo Admin
   {
     label: "Configuración",
     icon: <SettingsIcon />,
     path: "/s/configuracion",
-    roles: ["superadmin", "admin"],
+    roles: ["admin"],
+    permission: "configuracion:editar",
   },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasRole } = useAuthStore();
+  const { hasRole, user } = useAuthStore();
   const { tenantConfig } = useTenantStore();
-  const name = tenantConfig?.name;
+  const { unidadActiva, unidades } = useUnidadStore();
 
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    Administración: true,
+    Flota: true,
+    Combustible: true,
+  });
+
+  const tenantName = tenantConfig?.name;
+  const isAdmin = user?.role === "admin";
 
   const handleMenuClick = (label: string) => {
     setOpenMenus((prev) => ({
@@ -162,6 +207,11 @@ export default function Sidebar() {
   const hasAccess = (roles: UserRole[]) => {
     return hasRole(roles);
   };
+
+  // Nombre de la unidad activa para mostrar
+  const unidadNombre = isAdmin
+    ? unidadActiva?.nombre ?? "Todas las unidades"
+    : unidadActiva?.nombre ?? unidades[0]?.nombre ?? "Mi Unidad";
 
   return (
     <Drawer
@@ -182,6 +232,7 @@ export default function Sidebar() {
         },
       }}
     >
+      {/* Header del Sidebar */}
       <Box sx={{ p: 3, textAlign: "center" }}>
         <LocalGasStationIcon
           sx={{
@@ -195,25 +246,38 @@ export default function Sidebar() {
         <Typography
           variant="h6"
           fontWeight="bold"
-          sx={{ color: "var(--sidebar-text)" }}
+          sx={{ color: "var(--sidebar-text)", mb: 0.5 }}
         >
-          Gestión Combustibles
+          {tenantName || "Gestión Combustibles"}
         </Typography>
 
-        <Typography
-          variant="caption"
-          sx={{ color: "rgba(255, 255, 255, 0.6)" }}
-        >
-          {name || "Sistema"}
-        </Typography>
+        {/* Indicador de Unidad Activa (solo si no es admin o hay unidad seleccionada) */}
+        <Chip
+          icon={<StoreIcon sx={{ fontSize: 14, color: "inherit !important" }} />}
+          label={unidadNombre}
+          size="small"
+          sx={{
+            mt: 1,
+            bgcolor: "rgba(255, 255, 255, 0.1)",
+            color: "var(--sidebar-text)",
+            fontSize: 11,
+            height: 24,
+            "& .MuiChip-icon": {
+              color: "var(--accent-color)",
+            },
+          }}
+        />
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255, 255, 255, 0.1)" }} />
 
+      {/* Lista de Menú */}
       <List sx={{ px: 2, py: 1 }}>
         {menuStructure.map((item) => {
+          // Verificar acceso por roles
           if (!hasAccess(item.roles)) return null;
 
+          // Renderizar items con submenu
           if (item.submenu) {
             const filteredSubmenu = item.submenu.filter((subItem) =>
               hasAccess(subItem.roles)
@@ -307,6 +371,22 @@ export default function Sidebar() {
                               fontWeight: isActive(subItem.path) ? 600 : 400,
                             }}
                           />
+
+                          {/* Badge opcional */}
+                          {subItem.badge !== undefined && subItem.badge > 0 && (
+                            <Chip
+                              label={subItem.badge}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                minWidth: 20,
+                                fontSize: 10,
+                                bgcolor: "var(--accent-color)",
+                                color: "var(--sidebar-bg)",
+                                fontWeight: 700,
+                              }}
+                            />
+                          )}
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -316,6 +396,7 @@ export default function Sidebar() {
             );
           }
 
+          // Renderizar items sin submenu
           return (
             <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
@@ -362,6 +443,26 @@ export default function Sidebar() {
           );
         })}
       </List>
+
+      {/* Footer con versión */}
+      <Box
+        sx={{
+          mt: "auto",
+          p: 2,
+          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: "rgba(255, 255, 255, 0.4)",
+            display: "block",
+            textAlign: "center",
+          }}
+        >
+          v1.0.0 MVP
+        </Typography>
+      </Box>
     </Drawer>
   );
 }

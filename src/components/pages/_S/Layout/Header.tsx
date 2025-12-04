@@ -1,4 +1,4 @@
-// components/pages/_S/Layout/Header.tsx
+// src/components/pages/_S/Layout/Header.tsx
 import {
   AppBar,
   Toolbar,
@@ -11,6 +11,8 @@ import {
   Badge,
   Chip,
   Divider,
+  Select,
+  FormControl,
 } from "@mui/material";
 import { useState } from "react";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -18,18 +20,27 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
+import StoreIcon from "@mui/icons-material/Store";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTenantStore } from "@/stores/tenant.store";
+import { useUnidadStore } from "@/stores/unidad.store";
 import { useNavigate } from "react-router-dom";
-import type { UserRole } from "@/types";
+import type { UserRole, UnidadNegocioResumen } from "@/types";
 
 export default function Header() {
   const { user, logout } = useAuthStore();
   const { tenantConfig } = useTenantStore();
+  const { unidades, unidadActiva, setUnidadActiva } = useUnidadStore();
   const tenantName = tenantConfig?.name;
   const tenantTheme = tenantConfig?.theme;
   const navigate = useNavigate();
+  
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // Determinar si el usuario puede cambiar de unidad (solo admin)
+  const isAdmin = user?.role === "admin";
+  const canSwitchUnidad = isAdmin && unidades.length > 1;
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -44,6 +55,17 @@ export default function Header() {
     navigate("/s/login");
   };
 
+  const handleUnidadChange = (unidadId: number | "all") => {
+    if (unidadId === "all") {
+      setUnidadActiva(null);
+    } else {
+      const unidad = unidades.find((u) => u.id === unidadId);
+      if (unidad) {
+        setUnidadActiva(unidad);
+      }
+    }
+  };
+
   const getAvatarColor = (): string => {
     return tenantTheme?.primaryColor || "#3b82f6";
   };
@@ -53,10 +75,10 @@ export default function Header() {
   ): { bg: string; color: string } => {
     const colors: Record<UserRole, { bg: string; color: string }> = {
       superadmin: { bg: "#8b5cf615", color: "#8b5cf6" },
-      admin: { bg: "#ef444415", color: "#ef4444" },
-      supervisor: { bg: "#3b82f615", color: "#3b82f6" },
-      operador: { bg: "#10b98115", color: "#10b981" },
-      auditor: { bg: "#f59e0b15", color: "#f59e0b" },
+      admin: { bg: "#3b82f615", color: "#3b82f6" },
+      supervisor: { bg: "#10b98115", color: "#10b981" },
+      operador: { bg: "#f59e0b15", color: "#f59e0b" },
+      auditor: { bg: "#6b728015", color: "#6b7280" },
     };
     return rol ? colors[rol] : { bg: "#99999915", color: "#999" };
   };
@@ -64,7 +86,7 @@ export default function Header() {
   const getRolLabel = (rol: UserRole | undefined): string => {
     const labels: Record<UserRole, string> = {
       superadmin: "SuperAdmin",
-      admin: "Admin",
+      admin: "Administrador",
       supervisor: "Supervisor",
       operador: "Operador",
       auditor: "Auditor",
@@ -98,7 +120,7 @@ export default function Header() {
       }}
     >
       <Toolbar sx={{ minHeight: "72px !important", px: 4 }}>
-        {/* Lado Izquierdo */}
+        {/* Lado Izquierdo - Info Usuario + Selector de Unidad */}
         <Box
           sx={{
             flexGrow: 1,
@@ -120,11 +142,11 @@ export default function Header() {
           >
             Bienvenido de nuevo
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, ml: 3 }}>
             <Typography
               variant="h5"
               sx={{
-                ml: 3,
                 fontSize: 20,
                 lineHeight: 1,
                 fontWeight: 600,
@@ -134,6 +156,7 @@ export default function Header() {
             >
               {user?.name}
             </Typography>
+            
             <Chip
               label={getRolLabel(user?.role)}
               size="small"
@@ -142,11 +165,115 @@ export default function Header() {
                 color: getRolColor(user?.role).color,
                 fontWeight: 700,
                 height: 26,
-                fontSize: 12,
+                fontSize: 11,
                 borderRadius: 2,
                 letterSpacing: "0.3px",
               }}
             />
+
+            {/* Separador visual */}
+            {canSwitchUnidad && (
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 1.5, borderColor: "rgba(0,0,0,0.1)" }}
+              />
+            )}
+
+            {/* Selector de Unidad - Solo para Admin con múltiples unidades */}
+            {canSwitchUnidad && (
+              <FormControl size="small">
+                <Select
+                  value={unidadActiva?.id ?? "all"}
+                  onChange={(e) =>
+                    handleUnidadChange(e.target.value as number | "all")
+                  }
+                  IconComponent={KeyboardArrowDownIcon}
+                  sx={{
+                    minWidth: 200,
+                    bgcolor: "rgba(59, 130, 246, 0.08)",
+                    borderRadius: 2,
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "1px solid rgba(59, 130, 246, 0.2)",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: tenantTheme?.primaryColor || "#3b82f6",
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: tenantTheme?.primaryColor || "#3b82f6",
+                    },
+                    "& .MuiSelect-select": {
+                      py: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    },
+                  }}
+                  renderValue={(value) => (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <StoreIcon
+                        sx={{
+                          fontSize: 18,
+                          color: tenantTheme?.primaryColor || "#3b82f6",
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: tenantTheme?.primaryColor || "#1e293b",
+                        }}
+                      >
+                        {value === "all"
+                          ? "Todas las unidades"
+                          : unidadActiva?.nombre}
+                      </Typography>
+                    </Box>
+                  )}
+                >
+                  <MenuItem value="all">
+                    <StoreIcon sx={{ fontSize: 18, mr: 1, color: "#64748b" }} />
+                    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                      Todas las unidades
+                    </Typography>
+                  </MenuItem>
+                  
+                  <Divider sx={{ my: 0.5 }} />
+                  
+                  {unidades.map((unidad) => (
+                    <MenuItem key={unidad.id} value={unidad.id}>
+                      <StoreIcon sx={{ fontSize: 18, mr: 1, color: "#64748b" }} />
+                      <Box>
+                        <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                          {unidad.nombre}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: 11, color: "#94a3b8", lineHeight: 1 }}
+                        >
+                          {unidad.codigo}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {/* Mostrar unidad fija para supervisor/auditor */}
+            {!isAdmin && unidadActiva && (
+              <Chip
+                icon={<StoreIcon sx={{ fontSize: 14 }} />}
+                label={unidadActiva.nombre}
+                size="small"
+                variant="outlined"
+                sx={{
+                  borderColor: "rgba(0,0,0,0.1)",
+                  color: "#64748b",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              />
+            )}
           </Box>
         </Box>
 
@@ -319,6 +446,21 @@ export default function Header() {
                   </Typography>
                 </Box>
               )}
+              {unidadActiva && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <StoreIcon sx={{ fontSize: 19, color: "#94a3b8" }} />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: 14,
+                      color: "#64748b",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {unidadActiva.nombre}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -333,16 +475,18 @@ export default function Header() {
               Mi Perfil
             </MenuItem>
 
-            <MenuItem
-              onClick={() => {
-                handleClose();
-                navigate("/s/configuracion");
-              }}
-              sx={{ fontWeight: 600, fontSize: 14, py: 1.2, color: "#334155" }}
-            >
-              <SettingsIcon fontSize="small" sx={{ mr: 2, color: "#64748b" }} />
-              Configuración
-            </MenuItem>
+            {user?.role === "admin" && (
+              <MenuItem
+                onClick={() => {
+                  handleClose();
+                  navigate("/s/configuracion");
+                }}
+                sx={{ fontWeight: 600, fontSize: 14, py: 1.2, color: "#334155" }}
+              >
+                <SettingsIcon fontSize="small" sx={{ mr: 2, color: "#64748b" }} />
+                Configuración
+              </MenuItem>
+            )}
           </Box>
 
           <Divider sx={{ borderColor: "rgba(226, 232, 240, 0.6)" }} />

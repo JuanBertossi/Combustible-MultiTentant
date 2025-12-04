@@ -4,6 +4,7 @@
 export { apiClient } from "./api.client";
 export { authService } from "./auth.service";
 export { empresasService } from "./empresas.service";
+export { unidadesService } from "./unidades.service";
 export { eventosService } from "./eventos.service";
 export { vehiculosService } from "./vehiculos.service";
 export { choferesService } from "./choferes.service";

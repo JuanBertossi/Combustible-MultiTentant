@@ -7,10 +7,14 @@ import ProgressBar from "@/components/common/ProgressBar/ProgressBar";
 import { useTenantStore } from "@/stores/tenant.store";
 import { useEffect } from "react";
 import { useTenantDomain } from "@/hooks/use-tenant-domain";
+import { useUnidadesUsuario } from "@/hooks/queries";
 
 export default function DashboardLayout() {
   const { tenantConfig, fetchTenantConfig, isLoading } = useTenantStore();
   const tenantSlug = useTenantDomain();
+
+  // Cargar las unidades del usuario (actualiza el unidadStore automáticamente)
+  useUnidadesUsuario();
 
   // Cargar configuración del tenant si no está cargada
   useEffect(() => {

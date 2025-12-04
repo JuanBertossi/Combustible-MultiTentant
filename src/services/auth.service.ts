@@ -7,6 +7,7 @@ import { apiClient } from "./api.client";
  * TODO: Eliminar cuando la API esté lista
  */
 const MOCK_USERS: Record<string, User> = {
+  // SuperAdmin de GoodApps (acceso a /a)
   "admin@goodapps.com": {
     id: 1,
     email: "admin@goodapps.com",
@@ -14,30 +15,67 @@ const MOCK_USERS: Record<string, User> = {
     role: "superadmin",
     empresaId: null,
     empresaSubdomain: null,
+    unidadesAsignadas: [], // SuperAdmin no tiene unidades
   },
+  
+  // Admin de Empresa - ve TODAS las unidades
   "admin@empresaA.com": {
     id: 2,
     email: "admin@empresaA.com",
-    name: "Admin Empresa A",
+    name: "Carlos Rodríguez",
     role: "admin",
     empresaId: 1,
     empresaSubdomain: "empresaa",
+    unidadesAsignadas: [], // Admin ve todas (array vacío = todas)
+    telefono: "+54 351 1234567",
   },
+  
+  // Supervisor - solo ve Campo Norte (id: 1)
   "supervisor@empresaA.com": {
     id: 3,
     email: "supervisor@empresaA.com",
-    name: "Supervisor Empresa A",
+    name: "Juan Pérez",
     role: "supervisor",
     empresaId: 1,
     empresaSubdomain: "empresaa",
+    unidadesAsignadas: [1], // Solo Campo Norte
+    telefono: "+54 351 2345678",
   },
+  
+  // Supervisor 2 - solo ve Campo Sur (id: 2)
+  "supervisor2@empresaA.com": {
+    id: 5,
+    email: "supervisor2@empresaA.com",
+    name: "María García",
+    role: "supervisor",
+    empresaId: 1,
+    empresaSubdomain: "empresaa",
+    unidadesAsignadas: [2], // Solo Campo Sur
+    telefono: "+54 358 3456789",
+  },
+  
+  // Operador - asignado a Campo Norte
   "operador@empresaA.com": {
     id: 4,
     email: "operador@empresaA.com",
-    name: "Operador Empresa A",
+    name: "Pedro López",
     role: "operador",
     empresaId: 1,
     empresaSubdomain: "empresaa",
+    unidadesAsignadas: [1], // Solo Campo Norte
+    telefono: "+54 351 4567890",
+  },
+  
+  // Auditor - puede ver Campo Norte y Sur
+  "auditor@empresaA.com": {
+    id: 6,
+    email: "auditor@empresaA.com",
+    name: "Ana Martínez",
+    role: "auditor",
+    empresaId: 1,
+    empresaSubdomain: "empresaa",
+    unidadesAsignadas: [1, 2], // Campo Norte y Sur
+    telefono: "+54 351 5678901",
   },
 };
 

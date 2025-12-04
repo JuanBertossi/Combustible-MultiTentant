@@ -6,6 +6,7 @@ export * from "./auth";
 
 // Entidades principales
 export * from "./empresa";
+export * from "./unidad-negocio";
 export * from "./vehiculo";
 export * from "./chofer";
 export * from "./surtidor";

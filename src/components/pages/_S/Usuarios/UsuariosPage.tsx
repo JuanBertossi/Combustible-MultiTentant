@@ -1,5 +1,5 @@
-// components/pages/_S/Usuarios/UsuariosPage.tsx
-import { useState, useEffect } from "react";
+// src/components/pages/_S/Usuarios/UsuariosPage.tsx
+import { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Button,
@@ -17,6 +17,12 @@ import {
   Chip,
   IconButton,
   LinearProgress,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  Tooltip,
+  alpha,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import AddIcon from "@mui/icons-material/Add";
@@ -26,10 +32,16 @@ import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import StoreIcon from "@mui/icons-material/Store";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useAuthStore } from "@/stores/auth.store";
 import { useTenantStore } from "@/stores/tenant.store";
+import { useUnidadStore } from "@/stores/unidad.store";
+import type { UserRole as AppUserRole } from "@/types";
 import * as XLSX from "xlsx";
 
-type UserRole = "superadmin" | "admin" | "supervisor" | "operator" | "auditor";
+// Tipos locales
+type UserRole = "admin" | "supervisor" | "operador" | "auditor";
 
 interface Usuario {
   id: number;
@@ -41,6 +53,8 @@ interface Usuario {
   activo: boolean;
   empresaId: number;
   empresaNombre?: string;
+  unidadId?: number;
+  unidadNombre?: string;
 }
 
 interface UsuarioFormData {
@@ -50,13 +64,21 @@ interface UsuarioFormData {
   whatsapp: string;
   rol: UserRole;
   activo: boolean;
+  unidadId: number | null;
 }
 
 interface FormErrors {
   [key: string]: string;
 }
 
-const ROLES: UserRole[] = ["admin", "supervisor", "operator", "auditor"];
+// Roles disponibles según el rol del usuario actual
+const ROLES_BY_CURRENT_USER: Record<AppUserRole, UserRole[]> = {
+  superadmin: ["admin", "supervisor", "operador", "auditor"],
+  admin: ["admin", "supervisor", "operador", "auditor"],
+  supervisor: ["operador", "auditor"], // Supervisor solo puede crear operadores y auditores
+  operador: [],
+  auditor: [],
+};
 
 // Helpers
 const getInitials = (nombre: string, apellido?: string): string => {
@@ -80,55 +102,98 @@ const getAvatarColor = (name: string): string => {
 
 const getRolColor = (rol: UserRole): { bg: string; color: string } => {
   const colors: Record<UserRole, { bg: string; color: string }> = {
-    superadmin: { bg: "#dc262615", color: "#dc2626" },
-    admin: { bg: "#ef444415", color: "#ef4444" },
-    supervisor: { bg: "#f59e0b15", color: "#f59e0b" },
-    operator: { bg: "#3b82f615", color: "#3b82f6" },
-    auditor: { bg: "#10b98115", color: "#10b981" },
+    admin: { bg: "#3b82f615", color: "#3b82f6" },
+    supervisor: { bg: "#10b98115", color: "#10b981" },
+    operador: { bg: "#f59e0b15", color: "#f59e0b" },
+    auditor: { bg: "#6b728015", color: "#6b7280" },
   };
   return colors[rol] || { bg: "#99999915", color: "#999" };
 };
 
 const getRolLabel = (rol: UserRole): string => {
   const labels: Record<UserRole, string> = {
-    superadmin: "Super Admin",
-    admin: "Admin",
+    admin: "Administrador",
     supervisor: "Supervisor",
-    operator: "Operador",
+    operador: "Operador",
     auditor: "Auditor",
   };
   return labels[rol] || rol;
 };
 
-// Mock data
+// Mock data con unidades
 const mockUsuarios: Usuario[] = [
   {
     id: 1,
-    nombre: "Juan",
-    apellido: "Pérez",
-    email: "juan.perez@empresa.com",
+    nombre: "Carlos",
+    apellido: "Rodríguez",
+    email: "carlos.rodriguez@empresa.com",
     whatsapp: "+5493512345678",
     rol: "admin",
     activo: true,
     empresaId: 1,
     empresaNombre: "Empresa A",
+    unidadId: undefined, // Admin ve todas
+    unidadNombre: undefined,
   },
   {
     id: 2,
-    nombre: "María",
-    apellido: "González",
-    email: "maria.gonzalez@empresa.com",
+    nombre: "Juan",
+    apellido: "Pérez",
+    email: "juan.perez@empresa.com",
     whatsapp: "+5493519876543",
     rol: "supervisor",
     activo: true,
     empresaId: 1,
     empresaNombre: "Empresa A",
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
+  },
+  {
+    id: 3,
+    nombre: "María",
+    apellido: "García",
+    email: "maria.garcia@empresa.com",
+    whatsapp: "+5493581234567",
+    rol: "supervisor",
+    activo: true,
+    empresaId: 1,
+    empresaNombre: "Empresa A",
+    unidadId: 2,
+    unidadNombre: "Campo Sur",
+  },
+  {
+    id: 4,
+    nombre: "Pedro",
+    apellido: "López",
+    email: "pedro.lopez@empresa.com",
+    whatsapp: "+5493514567890",
+    rol: "operador",
+    activo: true,
+    empresaId: 1,
+    empresaNombre: "Empresa A",
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
+  },
+  {
+    id: 5,
+    nombre: "Ana",
+    apellido: "Martínez",
+    email: "ana.martinez@empresa.com",
+    rol: "auditor",
+    activo: true,
+    empresaId: 1,
+    empresaNombre: "Empresa A",
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
   },
 ];
 
 export default function UsuariosPage() {
-  const { user, tenantConfig } = useTenantStore();
+  const { user } = useAuthStore();
+  const { tenantConfig } = useTenantStore();
+  const { unidades, unidadActiva } = useUnidadStore();
   const tenantName = tenantConfig?.name;
+
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
@@ -142,31 +207,68 @@ export default function UsuariosPage() {
     apellido: "",
     email: "",
     whatsapp: "",
-    rol: "operator",
+    rol: "operador",
     activo: true,
+    unidadId: null,
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Determinar si el usuario actual es admin o supervisor
+  const isAdmin = user?.role === "admin";
+  const isSupervisor = user?.role === "supervisor";
+  const currentUserUnidades = user?.unidadesAsignadas ?? [];
+
+  // Roles que puede crear el usuario actual
+  const availableRoles = useMemo(() => {
+    return ROLES_BY_CURRENT_USER[user?.role ?? "operador"] ?? [];
+  }, [user?.role]);
+
+  // Unidades disponibles para asignar
+  const unidadesDisponibles = useMemo(() => {
+    if (isAdmin) {
+      return unidades; // Admin puede asignar a cualquier unidad
+    }
+    // Supervisor solo puede asignar a sus unidades
+    return unidades.filter((u) => currentUserUnidades.includes(u.id));
+  }, [isAdmin, unidades, currentUserUnidades]);
 
   useEffect(() => {
     const fetchData = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      setUsuarios(mockUsuarios);
+
+      // Filtrar usuarios según el rol del usuario actual
+      let filteredData = [...mockUsuarios];
+
+      if (isSupervisor) {
+        // Supervisor solo ve usuarios de su(s) unidad(es)
+        filteredData = filteredData.filter(
+          (u) => u.unidadId && currentUserUnidades.includes(u.unidadId)
+        );
+      }
+
+      setUsuarios(filteredData);
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [isSupervisor, currentUserUnidades]);
 
-  // Mientras mockeás, no filtres por tenantId
-  const usuariosPorEmpresa = usuarios;
-  const filteredUsuarios = usuariosPorEmpresa.filter((u) => {
-    const term = searchTerm.toLowerCase();
-    const matchSearch =
-      u.nombre.toLowerCase().includes(term) ||
-      (u.apellido && u.apellido.toLowerCase().includes(term)) ||
-      u.email.toLowerCase().includes(term);
-    const matchRol = filterRol === "Todos" || u.rol === filterRol;
-    return matchSearch && matchRol;
-  });
+  // Filtrar usuarios por búsqueda, rol y unidad activa
+  const filteredUsuarios = useMemo(() => {
+    return usuarios.filter((u) => {
+      const term = searchTerm.toLowerCase();
+      const matchSearch =
+        u.nombre.toLowerCase().includes(term) ||
+        (u.apellido && u.apellido.toLowerCase().includes(term)) ||
+        u.email.toLowerCase().includes(term);
+      const matchRol = filterRol === "Todos" || u.rol === filterRol;
+
+      // Filtrar por unidad activa (solo si está seleccionada)
+      const matchUnidad =
+        !unidadActiva || u.unidadId === unidadActiva.id || !u.unidadId;
+
+      return matchSearch && matchRol && matchUnidad;
+    });
+  }, [usuarios, searchTerm, filterRol, unidadActiva]);
 
   const handleExport = (): void => {
     const dataToExport = filteredUsuarios.map((u) => ({
@@ -175,8 +277,8 @@ export default function UsuariosPage() {
       Email: u.email,
       WhatsApp: u.whatsapp || "Sin WhatsApp",
       Rol: getRolLabel(u.rol),
+      Unidad: u.unidadNombre || "Todas",
       Estado: u.activo ? "Activo" : "Inactivo",
-      ...(user?.role === "superadmin" && { Empresa: u.empresaNombre }),
     }));
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
@@ -189,19 +291,36 @@ export default function UsuariosPage() {
 
   const handleNew = (): void => {
     setEditingUsuario(null);
+
+    // Auto-asignar unidad si es supervisor
+    const defaultUnidadId = isSupervisor
+      ? currentUserUnidades[0] ?? null
+      : null;
+
     setFormData({
       nombre: "",
       apellido: "",
       email: "",
       whatsapp: "",
-      rol: "operator",
+      rol: "operador",
       activo: true,
+      unidadId: defaultUnidadId,
     });
     setErrors({});
     setOpenDialog(true);
   };
 
   const handleEdit = (usuario: Usuario): void => {
+    // Supervisor no puede editar usuarios fuera de su unidad
+    if (isSupervisor && usuario.unidadId && !currentUserUnidades.includes(usuario.unidadId)) {
+      return;
+    }
+
+    // Supervisor no puede editar admins o supervisores
+    if (isSupervisor && (usuario.rol === "admin" || usuario.rol === "supervisor")) {
+      return;
+    }
+
     setEditingUsuario(usuario);
     setFormData({
       nombre: usuario.nombre,
@@ -210,6 +329,7 @@ export default function UsuariosPage() {
       whatsapp: usuario.whatsapp || "",
       rol: usuario.rol,
       activo: usuario.activo,
+      unidadId: usuario.unidadId ?? null,
     });
     setErrors({});
     setOpenDialog(true);
@@ -232,6 +352,12 @@ export default function UsuariosPage() {
       newErrors.whatsapp = "Formato inválido (ej: +5493512345678)";
     }
     if (!formData.rol) newErrors.rol = "El rol es obligatorio";
+
+    // Validar que se seleccione unidad para roles que lo requieren
+    if (formData.rol !== "admin" && !formData.unidadId) {
+      newErrors.unidadId = "Debe seleccionar una unidad";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -240,18 +366,27 @@ export default function UsuariosPage() {
     if (!validate()) return;
 
     try {
+      const unidadSeleccionada = unidades.find((u) => u.id === formData.unidadId);
+
       if (editingUsuario) {
         setUsuarios(
           usuarios.map((u) =>
-            u.id === editingUsuario.id ? { ...editingUsuario, ...formData } : u
+            u.id === editingUsuario.id
+              ? {
+                  ...editingUsuario,
+                  ...formData,
+                  unidadNombre: unidadSeleccionada?.nombre,
+                }
+              : u
           )
         );
       } else {
         const newUsuario: Usuario = {
           id: Math.max(...usuarios.map((u) => u.id), 0) + 1,
           ...formData,
-          empresaId: 1,
+          empresaId: user?.empresaId ?? 1,
           empresaNombre: tenantName,
+          unidadNombre: unidadSeleccionada?.nombre,
         };
         setUsuarios([...usuarios, newUsuario]);
       }
@@ -262,6 +397,16 @@ export default function UsuariosPage() {
   };
 
   const handleDeleteClick = (usuario: Usuario): void => {
+    // Supervisor no puede eliminar usuarios fuera de su unidad
+    if (isSupervisor && usuario.unidadId && !currentUserUnidades.includes(usuario.unidadId)) {
+      return;
+    }
+
+    // Supervisor no puede eliminar admins o supervisores
+    if (isSupervisor && (usuario.rol === "admin" || usuario.rol === "supervisor")) {
+      return;
+    }
+
     setDeleteUsuario(usuario);
     setOpenDeleteDialog(true);
   };
@@ -274,6 +419,19 @@ export default function UsuariosPage() {
     setDeleteUsuario(null);
   };
 
+  // Verificar si puede editar/eliminar un usuario
+  const canModifyUser = (usuario: Usuario): boolean => {
+    if (isAdmin) return true;
+    if (isSupervisor) {
+      // No puede modificar admins o supervisores
+      if (usuario.rol === "admin" || usuario.rol === "supervisor") return false;
+      // Solo puede modificar usuarios de su unidad
+      if (usuario.unidadId && !currentUserUnidades.includes(usuario.unidadId)) return false;
+      return true;
+    }
+    return false;
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -284,60 +442,85 @@ export default function UsuariosPage() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
           mt: -3,
           mb: 1.5,
         }}
       >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            lineHeight: 1.1,
-            letterSpacing: "-0.5px",
-          }}
-        >
-          Gestión de accesos • {filteredUsuarios.length}{" "}
-          {filteredUsuarios.length === 1 ? "usuario" : "usuarios"}
-        </Typography>
+        <Box>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              lineHeight: 1.1,
+              letterSpacing: "-0.5px",
+              mb: 0.5,
+            }}
+          >
+            Gestión de Usuarios
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b" }}>
+            {filteredUsuarios.length}{" "}
+            {filteredUsuarios.length === 1 ? "usuario" : "usuarios"}
+            {isSupervisor && (
+              <Chip
+                icon={<StoreIcon sx={{ fontSize: 14 }} />}
+                label="Solo tu unidad"
+                size="small"
+                sx={{ ml: 1, fontSize: 11, height: 22 }}
+              />
+            )}
+          </Typography>
+        </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={handleExport}
-              disabled={filteredUsuarios.length === 0}
-              sx={{
-                borderColor: "#10b981",
-                color: "#10b981",
-                fontWeight: 600,
-                textTransform: "none",
-                "&:hover": { borderColor: "#059669", bgcolor: "#10b98110" },
-              }}
-            >
-              Exportar
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleNew}
-              sx={{
-                bgcolor: "#1E2C56",
-                fontWeight: 600,
-                textTransform: "none",
-                "&:hover": { bgcolor: "#16213E" },
-              }}
-            >
-              Nuevo usuario
-            </Button>
-          </Box>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={handleExport}
+            disabled={filteredUsuarios.length === 0}
+            sx={{
+              borderColor: "#10b981",
+              color: "#10b981",
+              fontWeight: 600,
+              textTransform: "none",
+              "&:hover": { borderColor: "#059669", bgcolor: "#10b98110" },
+            }}
+          >
+            Exportar
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleNew}
+            sx={{
+              bgcolor: "#3b82f6",
+              fontWeight: 600,
+              textTransform: "none",
+              "&:hover": { bgcolor: "#2563eb" },
+            }}
+          >
+            Nuevo usuario
+          </Button>
         </Box>
       </Box>
+
+      {/* Info para supervisor */}
+      {isSupervisor && (
+        <Alert
+          severity="info"
+          icon={<InfoOutlinedIcon />}
+          sx={{ mb: 3, borderRadius: 2 }}
+        >
+          Como supervisor, puedes crear <strong>operadores</strong> y{" "}
+          <strong>auditores</strong> para tu unidad de negocio.
+        </Alert>
+      )}
 
       {/* Filtros */}
       <Box
@@ -377,7 +560,7 @@ export default function UsuariosPage() {
           sx={{ minWidth: 160 }}
         >
           <MenuItem value="Todos">Todos los roles</MenuItem>
-          {ROLES.map((rol) => (
+          {availableRoles.map((rol) => (
             <MenuItem key={rol} value={rol}>
               {getRolLabel(rol)}
             </MenuItem>
@@ -397,9 +580,10 @@ export default function UsuariosPage() {
                 border: "1px solid #e2e8f0",
                 height: "100%",
                 transition: "all 0.25s ease",
+                opacity: canModifyUser(usuario) ? 1 : 0.7,
                 "&:hover": {
                   boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
-                  transform: "translateY(-3px)",
+                  transform: canModifyUser(usuario) ? "translateY(-3px)" : "none",
                   borderColor: "#cbd5f5",
                 },
               }}
@@ -466,41 +650,47 @@ export default function UsuariosPage() {
                     </Box>
                   </Box>
 
-                  {/* Acciones separadas visualmente */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1,
-                      ml: 0.5,
-                    }}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(usuario)}
+                  {/* Acciones */}
+                  {canModifyUser(usuario) && (
+                    <Box
                       sx={{
-                        bgcolor: "#eef2ff",
-                        color: "#1d4ed8",
-                        "&:hover": { bgcolor: "#e0e7ff" },
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        ml: 0.5,
                       }}
                     >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(usuario)}
-                      sx={{
-                        bgcolor: "#fee2e2",
-                        color: "#dc2626",
-                        "&:hover": { bgcolor: "#fecaca" },
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
+                      <Tooltip title="Editar">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(usuario)}
+                          sx={{
+                            bgcolor: "#eef2ff",
+                            color: "#1d4ed8",
+                            "&:hover": { bgcolor: "#e0e7ff" },
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(usuario)}
+                          sx={{
+                            bgcolor: "#fee2e2",
+                            color: "#dc2626",
+                            "&:hover": { bgcolor: "#fecaca" },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  )}
                 </Box>
 
-                {/* Detalles con más separación */}
+                {/* Detalles */}
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1.75 }}
                 >
@@ -547,20 +737,22 @@ export default function UsuariosPage() {
                     </Box>
                   )}
 
-                  {user?.role === "superadmin" && (
-                    <Box>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block", mb: 0.3 }}
-                      >
-                        Empresa
-                      </Typography>
+                  {/* Mostrar unidad */}
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 0.3 }}
+                    >
+                      Unidad de Negocio
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                      <StoreIcon sx={{ fontSize: 18, color: "#64748b" }} />
                       <Typography variant="body2" fontWeight={500}>
-                        {usuario.empresaNombre || "N/A"}
+                        {usuario.unidadNombre || "Todas las unidades"}
                       </Typography>
                     </Box>
-                  )}
+                  </Box>
                 </Box>
               </CardContent>
             </Card>
@@ -583,34 +775,38 @@ export default function UsuariosPage() {
         onClose={() => setOpenDialog(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>
           {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-            <TextField
-              fullWidth
-              label="Nombre"
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData({ ...formData, nombre: e.target.value })
-              }
-              error={!!errors.nombre}
-              helperText={errors.nombre}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Apellido"
-              value={formData.apellido}
-              onChange={(e) =>
-                setFormData({ ...formData, apellido: e.target.value })
-              }
-              error={!!errors.apellido}
-              helperText={errors.apellido}
-              required
-            />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: 2 }}>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Nombre"
+                value={formData.nombre}
+                onChange={(e) =>
+                  setFormData({ ...formData, nombre: e.target.value })
+                }
+                error={!!errors.nombre}
+                helperText={errors.nombre}
+                required
+              />
+              <TextField
+                fullWidth
+                label="Apellido"
+                value={formData.apellido}
+                onChange={(e) =>
+                  setFormData({ ...formData, apellido: e.target.value })
+                }
+                error={!!errors.apellido}
+                helperText={errors.apellido}
+                required
+              />
+            </Box>
+
             <TextField
               fullWidth
               type="email"
@@ -623,6 +819,7 @@ export default function UsuariosPage() {
               helperText={errors.email}
               required
             />
+
             <TextField
               fullWidth
               label="Número WhatsApp (opcional)"
@@ -633,7 +830,7 @@ export default function UsuariosPage() {
               }
               error={!!errors.whatsapp}
               helperText={
-                errors.whatsapp || "Formato: +54 9 351 234 5678 (opcional)"
+                errors.whatsapp || "Para recibir notificaciones vía WhatsApp"
               }
               InputProps={{
                 startAdornment: (
@@ -643,40 +840,108 @@ export default function UsuariosPage() {
                 ),
               }}
             />
-            <TextField
-              fullWidth
-              select
-              label="Rol"
-              value={formData.rol}
-              onChange={(e) =>
-                setFormData({ ...formData, rol: e.target.value as UserRole })
-              }
-              error={!!errors.rol}
-              helperText={errors.rol}
-              required
-            >
-              {ROLES.map((rol) => (
-                <MenuItem key={rol} value={rol}>
-                  {getRolLabel(rol)}
-                </MenuItem>
-              ))}
-            </TextField>
+
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <FormControl fullWidth error={!!errors.rol}>
+                <InputLabel>Rol *</InputLabel>
+                <Select
+                  value={formData.rol}
+                  label="Rol *"
+                  onChange={(e) =>
+                    setFormData({ ...formData, rol: e.target.value as UserRole })
+                  }
+                >
+                  {availableRoles.map((rol) => (
+                    <MenuItem key={rol} value={rol}>
+                      {getRolLabel(rol)}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {errors.rol && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                    {errors.rol}
+                  </Typography>
+                )}
+              </FormControl>
+
+              {/* Selector de unidad - oculto para admins en ciertos casos */}
+              {formData.rol !== "admin" && (
+                <FormControl fullWidth error={!!errors.unidadId}>
+                  <InputLabel>Unidad *</InputLabel>
+                  <Select
+                    value={formData.unidadId ?? ""}
+                    label="Unidad *"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        unidadId: e.target.value as number,
+                      })
+                    }
+                    disabled={isSupervisor && unidadesDisponibles.length === 1}
+                  >
+                    {unidadesDisponibles.map((unidad) => (
+                      <MenuItem key={unidad.id} value={unidad.id}>
+                        {unidad.nombre} ({unidad.codigo})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.unidadId && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                      {errors.unidadId}
+                    </Typography>
+                  )}
+                </FormControl>
+              )}
+            </Box>
+
+            {/* Info de ayuda según el rol */}
+            {formData.rol && (
+              <Alert
+                severity="info"
+                sx={{
+                  bgcolor: alpha(getRolColor(formData.rol).color, 0.08),
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="body2">
+                  {formData.rol === "admin" &&
+                    "El administrador tiene acceso completo a todas las unidades de negocio."}
+                  {formData.rol === "supervisor" &&
+                    "El supervisor gestiona la flota, usuarios y valida eventos de su unidad."}
+                  {formData.rol === "operador" &&
+                    "El operador registra cargas de combustible vía WhatsApp."}
+                  {formData.rol === "auditor" &&
+                    "El auditor solo tiene acceso de lectura para auditorías."}
+                </Typography>
+              </Alert>
+            )}
+
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Typography variant="body2">Activo</Typography>
-              <Button
-                variant={formData.activo ? "contained" : "outlined"}
+              <Typography variant="body2">Estado:</Typography>
+              <Chip
+                label={formData.activo ? "Activo" : "Inactivo"}
                 onClick={() =>
                   setFormData({ ...formData, activo: !formData.activo })
                 }
-              >
-                {formData.activo ? "Sí" : "No"}
-              </Button>
+                sx={{
+                  bgcolor: formData.activo ? "#10b98115" : "#e5e7eb",
+                  color: formData.activo ? "#10b981" : "#6b7280",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              />
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setOpenDialog(false)} sx={{ borderRadius: 2 }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            sx={{ borderRadius: 2, bgcolor: "#3b82f6" }}
+          >
             {editingUsuario ? "Guardar Cambios" : "Crear Usuario"}
           </Button>
         </DialogActions>
@@ -686,8 +951,9 @@ export default function UsuariosPage() {
       <Dialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
             ¿Estás seguro de eliminar al usuario{" "}
@@ -696,10 +962,20 @@ export default function UsuariosPage() {
             </strong>
             ?
           </Typography>
+          <Typography variant="body2" sx={{ color: "#ef4444", mt: 1 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setOpenDeleteDialog(false)} sx={{ borderRadius: 2 }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            sx={{ borderRadius: 2 }}
+          >
             Eliminar
           </Button>
         </DialogActions>
