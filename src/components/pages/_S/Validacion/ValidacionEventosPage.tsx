@@ -1,5 +1,4 @@
-// components/pages/_S/Validacion/ValidacionPage.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -15,6 +14,7 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
+  LinearProgress,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -101,6 +101,21 @@ const mockEventos: EventoExtended[] = [
     empresaId: 1,
     empresaNombre: "Empresa A",
   },
+  {
+    id: 3,
+    vehiculoId: 3,
+    vehiculoPatente: "AAA111",
+    vehiculo: "AAA111 - Chevrolet S10",
+    choferNombre: "Carlos López",
+    chofer: "Carlos López",
+    litros: 220,
+    total: 187000,
+    costo: 187000,
+    fecha: new Date().toISOString(),
+    estado: ESTADOS_EVENTO.PENDIENTE,
+    empresaId: 2,
+    empresaNombre: "Empresa B",
+  },
 ];
 
 const mockEvidencias: Evidencia[] = [
@@ -116,6 +131,13 @@ const mockEvidencias: Evidencia[] = [
     eventoId: 1,
     tipo: "foto-odometro",
     url: "https://images.unsplash.com/photo-1621570945002-f4cdd43dbc68?w=800",
+    uploadedAt: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    eventoId: 2,
+    tipo: "foto-surtidor",
+    url: "https://images.unsplash.com/photo-1545262810-77515befe149?w=800",
     uploadedAt: new Date().toISOString(),
   },
 ];
@@ -134,12 +156,16 @@ function validarEventoConPoliticas(evento: EventoExtended): ValidationResult {
   }
 
   if (evento.litros > 200) {
-    advertencias.push("Carga excesiva de combustible detectada");
+    advertencias.push("Carga excesiva de combustible detectada (>200L)");
   }
 
   const evidencias = getEvidenciasByEvento(evento.id);
   if (evidencias.length === 0) {
     errores.push("Faltan evidencias fotográficas");
+  }
+
+  if (evidencias.length < 2) {
+    advertencias.push("Se recomienda adjuntar al menos 2 evidencias");
   }
 
   return {
@@ -160,7 +186,7 @@ function getResumenValidacion(result: ValidationResult): string {
   return parts.join(" | ") || "Todo correcto";
 }
 
-// Componente simplificado de EventoDetalle (crea uno completo después)
+// Componente EventoDetalle mejorado
 function EventoDetalle({
   open,
   onClose,
@@ -176,29 +202,143 @@ function EventoDetalle({
   onValidate: (e: EventoExtended) => void;
   onReject: (e: EventoExtended) => void;
 }) {
+  const validationResult = validarEventoConPoliticas(evento);
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Detalle del Evento #{evento.id}</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: "#3b82f615",
+              color: "#3b82f6",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <LocalGasStationIcon />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Detalle del Evento #{evento.id}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {evento.vehiculo}
+            </Typography>
+          </Box>
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ py: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {evento.vehiculo}
+          {/* Resumen de validación */}
+          {!validationResult.valido && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {validationResult.errores.join(", ")}
+              </Typography>
+            </Alert>
+          )}
+          {validationResult.advertencias.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {validationResult.advertencias.join(", ")}
+              </Typography>
+            </Alert>
+          )}
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={6}>
+              <Typography variant="caption" color="text.secondary">
+                Chofer
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {evento.chofer}
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" color="text.secondary">
+                Fecha
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {format(new Date(evento.fecha), "dd/MM/yyyy HH:mm")}
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" color="text.secondary">
+                Litros
+              </Typography>
+              <Typography variant="h6" fontWeight={700} color="#1E2C56">
+                {evento.litros} L
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" color="text.secondary">
+                Total
+              </Typography>
+              <Typography variant="h6" fontWeight={700} color="#10b981">
+                ${evento.total.toLocaleString()}
+              </Typography>
+            </Grid>
+          </Grid>
+
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+            Evidencias ({evidencias.length})
           </Typography>
-          <Typography>Chofer: {evento.chofer}</Typography>
-          <Typography>Litros: {evento.litros}</Typography>
-          <Typography>Total: ${evento.total}</Typography>
-          <Typography sx={{ mt: 2 }}>
-            Evidencias: {evidencias.length} archivos
-          </Typography>
+          <Grid container spacing={2}>
+            {evidencias.map((evidencia) => (
+              <Grid item xs={6} key={evidencia.id}>
+                <Box
+                  component="img"
+                  src={evidencia.url}
+                  alt={evidencia.tipo}
+                  sx={{
+                    width: "100%",
+                    height: 200,
+                    objectFit: "cover",
+                    borderRadius: 2,
+                    border: "1px solid #e0e0e0",
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mt: 0.5 }}
+                >
+                  {evidencia.tipo}
+                </Typography>
+              </Grid>
+            ))}
+            {evidencias.length === 0 && (
+              <Grid item xs={12}>
+                <Alert severity="warning">No hay evidencias disponibles</Alert>
+              </Grid>
+            )}
+          </Grid>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cerrar</Button>
-        <Button color="error" onClick={() => onReject(evento)}>
+      <DialogActions sx={{ p: 3, gap: 1 }}>
+        <Button onClick={onClose} variant="outlined">
+          Cerrar
+        </Button>
+        <Button
+          color="error"
+          onClick={() => onReject(evento)}
+          startIcon={<CancelIcon />}
+        >
           Rechazar
         </Button>
-        <Button variant="contained" onClick={() => onValidate(evento)}>
-          Validar
+        <Button
+          variant="contained"
+          onClick={() => onValidate(evento)}
+          startIcon={<CheckCircleIcon />}
+          disabled={!validationResult.valido}
+          sx={{ bgcolor: "#10b981", "&:hover": { bgcolor: "#059669" } }}
+        >
+          Validar Evento
         </Button>
       </DialogActions>
     </Dialog>
@@ -207,18 +347,37 @@ function EventoDetalle({
 
 export default function ValidacionPage() {
   const { user } = useTenantAuth();
-  const [eventos, setEventos] = useState<EventoExtended[]>(mockEventos);
-  const [selectedEvento, setSelectedEvento] = useState<EventoExtended | null>(null);
+  const [eventos, setEventos] = useState<EventoExtended[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedEvento, setSelectedEvento] = useState<EventoExtended | null>(
+    null
+  );
   const [openDetalleDialog, setOpenDetalleDialog] = useState<boolean>(false);
   const [openRejectDialog, setOpenRejectDialog] = useState<boolean>(false);
   const [motivo, setMotivo] = useState<string>("");
 
-  const eventosPendientes = eventos.filter((e) => {
-    const isPendiente = e.estado === ESTADOS_EVENTO.PENDIENTE;
-    const isEmpresa = user?.role === "superadmin" || e.empresaId === user?.tenantId;
-    return isPendiente && isEmpresa;
-  });
+  // ✅ Todos los hooks antes del early return
+  useEffect(() => {
+    const loadEventos = async () => {
+      setLoading(true);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        setEventos(mockEventos);
+      } catch (error) {
+        console.error("Error loading eventos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEventos();
+  }, []);
 
+  const eventosPendientes = useMemo(() => {
+    return eventos.filter((e) => {
+      const isPendiente = e.estado === ESTADOS_EVENTO.PENDIENTE;
+      return isPendiente;
+    });
+  }, [eventos]);
   const validationResults = useMemo(() => {
     const results = new Map<number, ValidationResult>();
     eventosPendientes.forEach((evento) => {
@@ -227,6 +386,16 @@ export default function ValidacionPage() {
     });
     return results;
   }, [eventosPendientes]);
+
+  // ✅ Early return después de todos los hooks
+  if (loading) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <LinearProgress />
+        <Typography sx={{ mt: 2 }}>Cargando eventos pendientes...</Typography>
+      </Box>
+    );
+  }
 
   const handleViewDetalle = (evento: EventoExtended): void => {
     setSelectedEvento(evento);
@@ -278,9 +447,13 @@ export default function ValidacionPage() {
   };
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+    <Box sx={{ p: 3, mt: -3}}>
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+        >
           Validación de Eventos
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -314,8 +487,10 @@ export default function ValidacionPage() {
         >
           <Typography fontWeight={600}>
             <strong>{eventosPendientes.length}</strong>{" "}
-            {eventosPendientes.length === 1 ? "evento pendiente" : "eventos pendientes"} de
-            validación
+            {eventosPendientes.length === 1
+              ? "evento pendiente"
+              : "eventos pendientes"}{" "}
+            de validación
           </Typography>
         </Alert>
       )}
@@ -331,22 +506,48 @@ export default function ValidacionPage() {
             : false;
 
           return (
-            <Grid item xs={12} md={6} lg={4} key={evento.id}>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              lg={4}
+              key={evento.id}
+              sx={{ display: "flex" }}
+            >
               <Card
                 elevation={0}
                 sx={{
                   border: "2px solid",
-                  borderColor: hasErrors ? "#ef4444" : hasWarnings ? "#f59e0b" : "#e0e0e0",
-                  borderRadius: 2,
-                  transition: "all 0.3s",
-                  bgcolor: hasErrors ? "#ef444405" : hasWarnings ? "#f59e0b05" : "white",
+                  borderColor: hasErrors
+                    ? "#ef4444"
+                    : hasWarnings
+                    ? "#f59e0b"
+                    : "#e2e8f0",
+                  borderRadius: 3,
+                  transition: "all 0.25s ease",
+                  bgcolor: hasErrors
+                    ? "#ef444405"
+                    : hasWarnings
+                    ? "#f59e0b05"
+                    : "white",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
                   "&:hover": {
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
-                    transform: "translateY(-4px)",
+                    boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
+                    transform: "translateY(-3px)",
                   },
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
+                <CardContent
+                  sx={{
+                    p: 2.5,
+                    flexGrow: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    width: 500,
+                  }}
+                >
                   <Box
                     sx={{
                       display: "flex",
@@ -355,7 +556,9 @@ export default function ValidacionPage() {
                       mb: 2,
                     }}
                   >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                    >
                       <Box
                         sx={{
                           width: 40,
@@ -366,15 +569,28 @@ export default function ValidacionPage() {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
+                          flexShrink: 0,
                         }}
                       >
                         <LocalGasStationIcon />
                       </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block" }}
+                        >
                           Evento #{evento.id}
                         </Typography>
-                        <Typography variant="h6" fontWeight={700}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight={700}
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {evento.vehiculo || evento.vehiculoPatente}
                         </Typography>
                       </Box>
@@ -384,10 +600,16 @@ export default function ValidacionPage() {
                       <Tooltip title={getResumenValidacion(validationResult)}>
                         <Chip
                           icon={<ErrorIcon />}
-                          label={`${validationResult.errores.length} Errores`}
+                          label={`${validationResult.errores.length} Error${
+                            validationResult.errores.length > 1 ? "es" : ""
+                          }`}
                           size="small"
-                          color="error"
-                          sx={{ fontWeight: 700 }}
+                          sx={{
+                            bgcolor: "#ef444415",
+                            color: "#ef4444",
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
                         />
                       </Tooltip>
                     ) : hasWarnings ? (
@@ -396,31 +618,47 @@ export default function ValidacionPage() {
                           icon={<WarningIcon />}
                           label="Advertencias"
                           size="small"
-                          color="warning"
-                          sx={{ fontWeight: 700 }}
+                          sx={{
+                            bgcolor: "#f59e0b15",
+                            color: "#f59e0b",
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
                         />
                       </Tooltip>
                     ) : (
                       <Chip
                         icon={<CheckCircleIcon />}
-                        label="Cumple Políticas"
+                        label="OK"
                         size="small"
-                        color="success"
-                        variant="outlined"
-                        sx={{ fontWeight: 700 }}
+                        sx={{
+                          bgcolor: "#10b98115",
+                          color: "#10b981",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}
                       />
                     )}
                   </Box>
 
                   {user?.role === "superadmin" && (
-                    <Typography variant="body2" color="primary" fontWeight={600} sx={{ mb: 1.5 }}>
-                      {evento.empresaNombre}
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 1.5 }}
+                    >
+                      Empresa: {evento.empresaNombre}
                     </Typography>
                   )}
 
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      <strong>Chofer:</strong> {evento.chofer || evento.choferNombre}
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      <strong>Chofer:</strong>{" "}
+                      {evento.chofer || evento.choferNombre}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       <strong>Fecha:</strong>{" "}
@@ -431,10 +669,10 @@ export default function ValidacionPage() {
                   <Box
                     sx={{
                       p: 2,
-                      bgcolor: "white",
+                      bgcolor: "#f9fafb",
                       borderRadius: 1.5,
                       mb: 2,
-                      border: "1px solid #e0e0e0",
+                      border: "1px solid #e2e8f0",
                     }}
                   >
                     <Grid container spacing={2}>
@@ -442,7 +680,11 @@ export default function ValidacionPage() {
                         <Typography variant="caption" color="text.secondary">
                           Litros
                         </Typography>
-                        <Typography variant="h6" fontWeight={700} color="#1E2C56">
+                        <Typography
+                          variant="h6"
+                          fontWeight={700}
+                          color="#1E2C56"
+                        >
                           {evento.litros} L
                         </Typography>
                       </Grid>
@@ -450,8 +692,13 @@ export default function ValidacionPage() {
                         <Typography variant="caption" color="text.secondary">
                           Costo
                         </Typography>
-                        <Typography variant="h6" fontWeight={700} color="#10b981">
-                          ${(evento.costo || evento.total || 0).toLocaleString()}
+                        <Typography
+                          variant="h6"
+                          fontWeight={700}
+                          color="#10b981"
+                        >
+                          $
+                          {(evento.costo || evento.total || 0).toLocaleString()}
                         </Typography>
                       </Grid>
                     </Grid>
@@ -463,55 +710,83 @@ export default function ValidacionPage() {
                         mb: 2,
                         p: 1.5,
                         bgcolor: "#3b82f615",
-                        borderRadius: 1,
+                        borderRadius: 1.5,
                         border: "1px solid #3b82f630",
                       }}
                     >
-                      <Typography variant="caption" fontWeight={600} color="#3b82f6">
-                        📎 {getEvidenciasByEvento(evento.id).length} evidencias disponibles
+                      <Typography
+                        variant="caption"
+                        fontWeight={600}
+                        color="#3b82f6"
+                      >
+                        📎 {getEvidenciasByEvento(evento.id).length} evidencia
+                        {getEvidenciasByEvento(evento.id).length > 1
+                          ? "s"
+                          : ""}{" "}
+                        disponible
+                        {getEvidenciasByEvento(evento.id).length > 1 ? "s" : ""}
                       </Typography>
                     </Box>
                   )}
 
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    startIcon={<VisibilityIcon />}
-                    onClick={() => handleViewDetalle(evento)}
-                    sx={{
-                      bgcolor: "#1E2C56",
-                      fontWeight: 700,
-                      mb: 1.5,
-                      "&:hover": { bgcolor: "#16213E" },
-                    }}
-                  >
-                    Ver Evidencias y Validar
-                  </Button>
+                  <Box sx={{ mt: "auto" }}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<VisibilityIcon />}
+                      onClick={() => handleViewDetalle(evento)}
+                      sx={{
+                        bgcolor: "#1E2C56",
+                        fontWeight: 600,
+                        textTransform: "none",
+                        mb: 1.5,
+                        "&:hover": { bgcolor: "#16213E" },
+                      }}
+                    >
+                      Ver Evidencias y Validar
+                    </Button>
 
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      color="success"
-                      startIcon={<CheckCircleIcon />}
-                      onClick={() => handleValidate(evento)}
-                      sx={{ fontWeight: 600 }}
-                      disabled={hasErrors}
-                    >
-                      Validar Rápido
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      startIcon={<CancelIcon />}
-                      onClick={() => handleRejectClick(evento)}
-                      sx={{ fontWeight: 600 }}
-                    >
-                      Rechazar
-                    </Button>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CheckCircleIcon />}
+                        onClick={() => handleValidate(evento)}
+                        sx={{
+                          borderColor: "#10b981",
+                          color: "#10b981",
+                          fontWeight: 600,
+                          textTransform: "none",
+                          "&:hover": {
+                            borderColor: "#059669",
+                            bgcolor: "#10b98110",
+                          },
+                        }}
+                        disabled={hasErrors}
+                      >
+                        Validar
+                      </Button>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CancelIcon />}
+                        onClick={() => handleRejectClick(evento)}
+                        sx={{
+                          borderColor: "#ef4444",
+                          color: "#ef4444",
+                          fontWeight: 600,
+                          textTransform: "none",
+                          "&:hover": {
+                            borderColor: "#dc2626",
+                            bgcolor: "#ef444410",
+                          },
+                        }}
+                      >
+                        Rechazar
+                      </Button>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -531,7 +806,12 @@ export default function ValidacionPage() {
         />
       )}
 
-      <Dialog open={openRejectDialog} onClose={() => setOpenRejectDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openRejectDialog}
+        onClose={() => setOpenRejectDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box
@@ -560,8 +840,8 @@ export default function ValidacionPage() {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }} color="text.secondary">
-            Ingresa el motivo del rechazo. Este comentario será visible para el chofer y
-            supervisores.
+            Ingresa el motivo del rechazo. Este comentario será visible para el
+            chofer y supervisores.
           </Typography>
           <TextField
             fullWidth

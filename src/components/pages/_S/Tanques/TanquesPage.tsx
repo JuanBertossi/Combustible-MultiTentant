@@ -1,4 +1,3 @@
-// components/pages/_S/Tanques/TanquesPage.tsx
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -86,16 +85,62 @@ const mockTanques: TanqueExtended[] = [
     empresaId: 1,
     empresa: "Empresa A",
   },
+  {
+    id: 3,
+    codigo: "TNQ-003",
+    nombre: "Tanque GNC Secundario",
+    ubicacion: "Zona Sur - Depósito",
+    tipoCombustible: "GNC",
+    capacidadMaxima: 8000,
+    nivelActual: 300,
+    activo: true,
+    empresaId: 2,
+    empresa: "Empresa B",
+  },
+  {
+    id: 4,
+    codigo: "TNQ-004",
+    nombre: "Tanque GLP Reserva",
+    ubicacion: "Zona Este - Campo 5",
+    tipoCombustible: "GLP",
+    capacidadMaxima: 3000,
+    nivelActual: 2100,
+    activo: false,
+    empresaId: 1,
+    empresa: "Empresa A",
+  },
 ];
+
+const getColorByTipo = (tipo: string): string => {
+  const colors: Record<string, string> = {
+    Diésel: "#10b981",
+    Nafta: "#3b82f6",
+    GNC: "#f59e0b",
+    GLP: "#8b5cf6",
+  };
+  return colors[tipo] ?? "#667eea";
+};
+
+const getNivelPercentage = (tanque: TanqueExtended): number => {
+  return ((tanque.nivelActual || 0) / (tanque.capacidadMaxima || 1)) * 100;
+};
+
+const getNivelColor = (percentage: number): "success" | "warning" | "error" => {
+  if (percentage > 50) return "success";
+  if (percentage > 25) return "warning";
+  return "error";
+};
 
 export default function TanquesPage() {
   const { user } = useTenantAuth();
-  const { id: tenantId, name: tenantName } = useTenantContext();
+  const { name: tenantName } = useTenantContext();
   const [tanques, setTanques] = useState<TanqueExtended[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
-  const [editingTanque, setEditingTanque] = useState<TanqueExtended | null>(null);
+  const [editingTanque, setEditingTanque] = useState<TanqueExtended | null>(
+    null
+  );
   const [deleteTanque, setDeleteTanque] = useState<TanqueExtended | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
@@ -110,24 +155,23 @@ export default function TanquesPage() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // ✅ Todos los hooks antes del early return
   useEffect(() => {
+    const loadTanques = async () => {
+      setLoading(true);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        setTanques(mockTanques);
+      } catch (error) {
+        console.error("Error loading tanques:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadTanques();
   }, []);
 
-  const loadTanques = async () => {
-    setLoading(true);
-    try {
-      // Aquí irá la llamada al servicio
-      // const data = await tanqueService.getAll();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setTanques(mockTanques);
-    } catch (error) {
-      console.error("Error loading tanques:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ✅ Early return después de todos los hooks
   if (loading) {
     return (
       <Box sx={{ p: 4 }}>
@@ -137,20 +181,22 @@ export default function TanquesPage() {
     );
   }
 
-  const tanquesPorEmpresa = tanques.filter((t) => t.empresaId === tenantId);
-
-  const filteredTanques = tanquesPorEmpresa.filter((t) => {
+  const filteredTanques = tanques.filter((t) => {
     const matchSearch =
       (t.codigo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.ubicacion || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchTipo = filterTipo === "Todos" || t.tipoCombustible === filterTipo;
+    const matchTipo =
+      filterTipo === "Todos" || t.tipoCombustible === filterTipo;
     return matchSearch && matchTipo;
   });
 
   const handleExport = (): void => {
     const dataToExport = filteredTanques.map((t) => {
-      const percentage = (((t.nivelActual || 0) / (t.capacidadMaxima || 1)) * 100).toFixed(1);
+      const percentage = (
+        ((t.nivelActual || 0) / (t.capacidadMaxima || 1)) *
+        100
+      ).toFixed(1);
       return {
         Código: t.codigo || "",
         Nombre: t.nombre,
@@ -161,14 +207,19 @@ export default function TanquesPage() {
         "Nivel (%)": percentage,
         "Disponible (L)": (t.capacidadMaxima || 0) - (t.nivelActual || 0),
         Estado: t.activo ? "Activo" : "Inactivo",
-        ...(user?.role === "superadmin" && { Empresa: t.empresa || t.empresaNombre }),
+        ...(user?.role === "admin" && {
+          Empresa: t.empresa || t.empresaNombre,
+        }),
       };
     });
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tanques");
-    XLSX.writeFile(wb, `Tanques_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Tanques_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   const handleNew = (): void => {
@@ -205,15 +256,19 @@ export default function TanquesPage() {
     const newErrors: FormErrors = {};
     if (!formData.codigo.trim()) newErrors.codigo = "El código es obligatorio";
     if (!formData.nombre.trim()) newErrors.nombre = "El nombre es obligatorio";
-    if (!formData.ubicacion.trim()) newErrors.ubicacion = "La ubicación es obligatoria";
-    if (!formData.tipoCombustible) newErrors.tipoCombustible = "El tipo es obligatorio";
+    if (!formData.ubicacion.trim())
+      newErrors.ubicacion = "La ubicación es obligatoria";
+    if (!formData.tipoCombustible)
+      newErrors.tipoCombustible = "El tipo es obligatorio";
 
     const capacidad =
       typeof formData.capacidadMaxima === "string"
         ? parseFloat(formData.capacidadMaxima)
         : formData.capacidadMaxima;
     const nivel =
-      typeof formData.nivelActual === "string" ? parseFloat(formData.nivelActual) : formData.nivelActual;
+      typeof formData.nivelActual === "string"
+        ? parseFloat(formData.nivelActual)
+        : formData.nivelActual;
 
     if (!capacidad || capacidad <= 0) {
       newErrors.capacidadMaxima = "La capacidad debe ser mayor a 0";
@@ -237,7 +292,9 @@ export default function TanquesPage() {
         ? parseFloat(formData.capacidadMaxima)
         : formData.capacidadMaxima;
     const nivel =
-      typeof formData.nivelActual === "string" ? parseFloat(formData.nivelActual) : formData.nivelActual;
+      typeof formData.nivelActual === "string"
+        ? parseFloat(formData.nivelActual)
+        : formData.nivelActual;
 
     try {
       if (editingTanque) {
@@ -263,7 +320,7 @@ export default function TanquesPage() {
           capacidadMaxima: capacidad,
           nivelActual: nivel,
           activo: formData.activo,
-          empresaId: tenantId || 0,
+          empresaId: 1,
           empresa: tenantName,
         };
         setTanques([...tanques, newTanque]);
@@ -291,92 +348,22 @@ export default function TanquesPage() {
     setDeleteTanque(null);
   };
 
-  const getColorByTipo = (tipo: string): string => {
-    const colors: Record<string, string> = {
-      Diésel: "#10b981",
-      Nafta: "#3b82f6",
-      GNC: "#f59e0b",
-      GLP: "#8b5cf6",
-    };
-    return colors[tipo] ?? "#667eea";
-  };
-
-  const getNivelPercentage = (tanque: TanqueExtended): number => {
-    return ((tanque.nivelActual || 0) / (tanque.capacidadMaxima || 1)) * 100;
-  };
-
-  const getNivelColor = (percentage: number): "success" | "warning" | "error" => {
-    if (percentage > 50) return "success";
-    if (percentage > 25) return "warning";
-    return "error";
-  };
-
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        {loading && <LinearProgress sx={{ mb: 2, borderRadius: 1 }} />}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            mb: 3,
-          }}
-        >
-          <Box>
-            <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
-              Tanques de Combustible
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Gestión de tanques y stock • {filteredTanques.length}{" "}
-              {filteredTanques.length === 1 ? "tanque" : "tanques"}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            flexWrap: "wrap",
-            alignItems: "center",
-            bgcolor: "white",
-            p: 2.5,
-            borderRadius: 2,
-            border: "1px solid #e0e0e0",
-          }}
-        >
-          <TextField
-            placeholder="Buscar por código, nombre o ubicación..."
-            size="small"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ flexGrow: 1, minWidth: 250 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: "#999" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <TextField
-            select
-            size="small"
-            label="Tipo"
-            value={filterTipo}
-            onChange={(e) => setFilterTipo(e.target.value)}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="Todos">Todos los tipos</MenuItem>
-            {TIPOS_COMBUSTIBLE.map((tipo) => (
-              <MenuItem key={tipo} value={tipo}>
-                {tipo}
-              </MenuItem>
-            ))}
-          </TextField>
-
+    <Box sx={{ p: 3, mt: -3 }}>
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 1.5,
+        }}
+      >
+        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+          Gestión de Tanques • {filteredTanques.length}{" "}
+          {filteredTanques.length === 1 ? "tanque" : "tanques"}
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<FileDownloadIcon />}
@@ -386,15 +373,12 @@ export default function TanquesPage() {
               borderColor: "#10b981",
               color: "#10b981",
               fontWeight: 600,
-              "&:hover": {
-                borderColor: "#059669",
-                bgcolor: "#10b98110",
-              },
+              textTransform: "none",
+              "&:hover": { borderColor: "#059669", bgcolor: "#10b98110" },
             }}
           >
             Exportar
           </Button>
-
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -402,6 +386,7 @@ export default function TanquesPage() {
             sx={{
               bgcolor: "#1E2C56",
               fontWeight: 600,
+              textTransform: "none",
               "&:hover": { bgcolor: "#16213E" },
             }}
           >
@@ -410,6 +395,52 @@ export default function TanquesPage() {
         </Box>
       </Box>
 
+      {/* Filtros */}
+      <Box
+        sx={{
+          mb: 3,
+          background: "white",
+          borderRadius: 2,
+          border: "1px solid #e2e8f0",
+          p: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          alignItems: "center",
+        }}
+      >
+        <TextField
+          placeholder="Buscar por código, nombre o ubicación..."
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ flexGrow: 1, minWidth: 220 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: "#9ca3af" }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          select
+          size="small"
+          label="Tipo"
+          value={filterTipo}
+          onChange={(e) => setFilterTipo(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="Todos">Todos los tipos</MenuItem>
+          {TIPOS_COMBUSTIBLE.map((tipo) => (
+            <MenuItem key={tipo} value={tipo}>
+              {tipo}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+
+      {/* Grid de tanques */}
       <Grid container spacing={3}>
         {filteredTanques.map((tanque) => {
           const percentage = getNivelPercentage(tanque);
@@ -420,13 +451,14 @@ export default function TanquesPage() {
               <Card
                 elevation={0}
                 sx={{
-                  border: "1px solid #e0e0e0",
-                  borderRadius: 2,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 3,
                   height: "100%",
-                  transition: "all 0.3s",
+                  transition: "all 0.25s ease",
                   "&:hover": {
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    transform: "translateY(-2px)",
+                    boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
+                    transform: "translateY(-3px)",
+                    borderColor: getColorByTipo(tanque.tipoCombustible || ""),
                   },
                 }}
               >
@@ -444,7 +476,9 @@ export default function TanquesPage() {
                         width: 48,
                         height: 48,
                         borderRadius: 2,
-                        bgcolor: `${getColorByTipo(tanque.tipoCombustible || "")}15`,
+                        bgcolor: `${getColorByTipo(
+                          tanque.tipoCombustible || ""
+                        )}15`,
                         color: getColorByTipo(tanque.tipoCombustible || ""),
                         display: "flex",
                         alignItems: "center",
@@ -453,32 +487,45 @@ export default function TanquesPage() {
                     >
                       <PropaneTankIcon sx={{ fontSize: 28 }} />
                     </Box>
-
                     <Chip
                       label={tanque.tipoCombustible || ""}
                       size="small"
                       sx={{
-                        bgcolor: `${getColorByTipo(tanque.tipoCombustible || "")}15`,
+                        bgcolor: `${getColorByTipo(
+                          tanque.tipoCombustible || ""
+                        )}15`,
                         color: getColorByTipo(tanque.tipoCombustible || ""),
                         fontWeight: 600,
                       }}
                     />
                   </Box>
 
-                  <Typography variant="h6" fontWeight="700" sx={{ mb: 0.5 }}>
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
                     {tanque.codigo || ""}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
                     {tanque.nombre}
                   </Typography>
 
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 2 }}>
-                    <LocationOnIcon sx={{ fontSize: 16, color: "#999" }} />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      mb: 2,
+                    }}
+                  >
+                    <LocationOnIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                     <Typography variant="caption" color="text.secondary">
                       {tanque.ubicacion}
                     </Typography>
                   </Box>
 
+                  {/* Nivel del tanque */}
                   <Box sx={{ mb: 2 }}>
                     <Box
                       sx={{
@@ -491,9 +538,15 @@ export default function TanquesPage() {
                       <Typography variant="caption" color="text.secondary">
                         Nivel actual
                       </Typography>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        {percentage < 25 && <WarningIcon sx={{ fontSize: 16, color: "#f59e0b" }} />}
-                        <Typography variant="caption" fontWeight="600">
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        {percentage < 25 && (
+                          <WarningIcon
+                            sx={{ fontSize: 16, color: "#f59e0b" }}
+                          />
+                        )}
+                        <Typography variant="caption" fontWeight={600}>
                           {percentage.toFixed(1)}%
                         </Typography>
                       </Box>
@@ -512,33 +565,56 @@ export default function TanquesPage() {
 
                   <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                     <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                      >
                         Capacidad
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
+                      <Typography variant="body2" fontWeight={600}>
                         {(tanque.capacidadMaxima || 0).toLocaleString()} L
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                        Estado
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                      >
+                        Disponible
                       </Typography>
-                      <Chip
-                        label={tanque.activo ? "Activo" : "Inactivo"}
-                        size="small"
-                        sx={{
-                          bgcolor: tanque.activo ? "#10b98115" : "#99999915",
-                          color: tanque.activo ? "#10b981" : "#999",
-                          fontWeight: 600,
-                          height: 20,
-                          fontSize: 11,
-                        }}
-                      />
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        color="#10b981"
+                      >
+                        {(
+                          (tanque.capacidadMaxima || 0) -
+                          (tanque.nivelActual || 0)
+                        ).toLocaleString()}{" "}
+                        L
+                      </Typography>
                     </Box>
                   </Box>
 
-                  {user?.role === "superadmin" && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                  <Chip
+                    label={tanque.activo ? "Activo" : "Inactivo"}
+                    size="small"
+                    sx={{
+                      bgcolor: tanque.activo ? "#10b98115" : "#99999915",
+                      color: tanque.activo ? "#10b981" : "#999",
+                      fontWeight: 600,
+                      mb: 2,
+                    }}
+                  />
+
+                  {user?.role === "admin" && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 2 }}
+                    >
                       Empresa: {tanque.empresa}
                     </Typography>
                   )}
@@ -582,14 +658,27 @@ export default function TanquesPage() {
         </Box>
       )}
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingTanque ? "Editar Tanque" : "Nuevo Tanque"}</DialogTitle>
+      {/* Diálogo crear/editar */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingTanque ? "Editar Tanque" : "Nuevo Tanque"}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
             <TextField
               label="Código"
               value={formData.codigo}
-              onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase() })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  codigo: e.target.value.toUpperCase(),
+                })
+              }
               error={!!errors.codigo}
               helperText={errors.codigo}
               required
@@ -600,7 +689,9 @@ export default function TanquesPage() {
               select
               label="Tipo de Combustible"
               value={formData.tipoCombustible}
-              onChange={(e) => setFormData({ ...formData, tipoCombustible: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, tipoCombustible: e.target.value })
+              }
               error={!!errors.tipoCombustible}
               helperText={errors.tipoCombustible}
               required
@@ -615,7 +706,9 @@ export default function TanquesPage() {
             <TextField
               label="Nombre"
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
               error={!!errors.nombre}
               helperText={errors.nombre}
               required
@@ -625,7 +718,9 @@ export default function TanquesPage() {
             <TextField
               label="Ubicación"
               value={formData.ubicacion}
-              onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, ubicacion: e.target.value })
+              }
               error={!!errors.ubicacion}
               helperText={errors.ubicacion}
               required
@@ -637,7 +732,10 @@ export default function TanquesPage() {
               type="number"
               value={formData.capacidadMaxima}
               onChange={(e) =>
-                setFormData({ ...formData, capacidadMaxima: parseInt(e.target.value) || "" })
+                setFormData({
+                  ...formData,
+                  capacidadMaxima: parseInt(e.target.value) || "",
+                })
               }
               error={!!errors.capacidadMaxima}
               helperText={errors.capacidadMaxima}
@@ -648,7 +746,12 @@ export default function TanquesPage() {
               label="Nivel Actual (litros)"
               type="number"
               value={formData.nivelActual}
-              onChange={(e) => setFormData({ ...formData, nivelActual: parseInt(e.target.value) || "" })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nivelActual: parseInt(e.target.value) || "",
+                })
+              }
               error={!!errors.nivelActual}
               helperText={errors.nivelActual}
               required
@@ -664,11 +767,16 @@ export default function TanquesPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+      {/* Diálogo eliminar */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de eliminar el tanque <strong>{deleteTanque?.codigo}</strong> -{" "}
+            ¿Estás seguro de eliminar el tanque{" "}
+            <strong>{deleteTanque?.codigo}</strong> -{" "}
             <strong>{deleteTanque?.nombre}</strong>?
           </Typography>
         </DialogContent>

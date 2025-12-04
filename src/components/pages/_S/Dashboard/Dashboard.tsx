@@ -1,5 +1,4 @@
 import { useState } from "react";
-import SkeletonLoading from "../../../common/SkeletonLoading/SkeletonLoading";
 import {
   Box,
   Card,
@@ -44,7 +43,7 @@ interface ConsumoMensualData {
 interface ConsumoPorVehiculoData {
   vehiculo: string;
   litros: number;
-  eficiencia: number;
+  eficiencia: number; 
 }
 
 interface ConsumoPorTipoData {
@@ -90,7 +89,6 @@ const COLORS = ["#1E2C56", "#4A90E2", "#10b981", "#f59e0b"];
 
 export default function Dashboard() {
   const [periodo, setPeriodo] = useState<PeriodoType>("mes");
-  const [isLoading] = useState<boolean>(false);
   const handlePeriodo = (event: SelectChangeEvent<PeriodoType>) => {
     setPeriodo(event.target.value as PeriodoType);
   };
@@ -133,14 +131,6 @@ export default function Dashboard() {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <SkeletonLoading height={48} count={1} />
-        <SkeletonLoading height={120} count={4} />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ p: 3 }}>

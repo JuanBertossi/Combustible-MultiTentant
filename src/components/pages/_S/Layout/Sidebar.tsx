@@ -1,3 +1,4 @@
+// components/layout/Sidebar.tsx
 import { useState } from "react";
 import {
   List,
@@ -141,7 +142,7 @@ const menuStructure: MenuItem[] = [
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useTenantAuth ();
+  const { user } = useTenantAuth();
   const { tenant } = useTenant();
   const name = tenant?.name;
 
@@ -166,25 +167,34 @@ export default function Sidebar() {
   return (
     <Drawer
       variant="permanent"
+      className="tenant-sidebar"
       sx={{
         width: DRAWER_WIDTH,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
           width: DRAWER_WIDTH,
           boxSizing: "border-box",
-          bgcolor: "#1E2C56",
-          color: "#fff",
+          bgcolor: "var(--sidebar-bg)",
+          color: "var(--sidebar-text)",
           position: "fixed",
           height: "100vh",
           overflowY: "auto",
+          borderRight: "1px solid rgba(255, 255, 255, 0.08)",
         },
       }}
     >
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <LocalGasStationIcon sx={{ fontSize: 40, color: "#4A90E2", mb: 1 }} />
+        <LocalGasStationIcon 
+          sx={{ 
+            fontSize: 40, 
+            color: "var(--accent-color)", 
+            mb: 1,
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
+          }} 
+        />
 
-        <Typography variant="h6" fontWeight="bold">
-          Gestion Combustibles
+        <Typography variant="h6" fontWeight="bold" sx={{ color: "var(--sidebar-text)" }}>
+          Gestión Combustibles
         </Typography>
 
         <Typography
@@ -216,11 +226,16 @@ export default function Sidebar() {
                     sx={{
                       borderRadius: 2,
                       bgcolor: "transparent",
-                      "&:hover": { bgcolor: "rgba(255, 255, 255, 0.08)" },
+                      color: "var(--sidebar-text)",
+                      "&:hover": { 
+                        bgcolor: "rgba(255, 255, 255, 0.08)",
+                        transform: "translateX(4px)",
+                        transition: "all 0.2s"
+                      },
                     }}
                   >
                     <ListItemIcon
-                      sx={{ color: "rgba(255, 255, 255, 0.7)", minWidth: 40 }}
+                      sx={{ color: "var(--sidebar-text)", minWidth: 40, opacity: 0.9 }}
                     >
                       {item.icon}
                     </ListItemIcon>
@@ -247,21 +262,28 @@ export default function Sidebar() {
                           sx={{
                             borderRadius: 2,
                             bgcolor: isActive(subItem.path)
-                              ? "#4A90E2"
+                              ? "rgba(255, 255, 255, 0.15)"
                               : "transparent",
+                            color: "var(--sidebar-text)",
+                            borderLeft: isActive(subItem.path) 
+                              ? "3px solid var(--accent-color)" 
+                              : "3px solid transparent",
                             "&:hover": {
                               bgcolor: isActive(subItem.path)
-                                ? "#5a9eeb"
+                                ? "rgba(255, 255, 255, 0.2)"
                                 : "rgba(255, 255, 255, 0.08)",
+                              transform: "translateX(4px)",
+                              transition: "all 0.2s"
                             },
                           }}
                         >
                           <ListItemIcon
                             sx={{
                               color: isActive(subItem.path)
-                                ? "#fff"
-                                : "rgba(255, 255, 255, 0.7)",
+                                ? "var(--accent-color)"
+                                : "var(--sidebar-text)",
                               minWidth: 36,
+                              opacity: isActive(subItem.path) ? 1 : 0.8,
                             }}
                           >
                             {subItem.icon}
@@ -289,20 +311,29 @@ export default function Sidebar() {
                 onClick={() => item.path && navigate(item.path)}
                 sx={{
                   borderRadius: 2,
-                  bgcolor: isActive(item.path) ? "#4A90E2" : "transparent",
+                  bgcolor: isActive(item.path) 
+                    ? "rgba(255, 255, 255, 0.15)" 
+                    : "transparent",
+                  color: "var(--sidebar-text)",
+                  borderLeft: isActive(item.path) 
+                    ? "3px solid var(--accent-color)" 
+                    : "3px solid transparent",
                   "&:hover": {
                     bgcolor: isActive(item.path)
-                      ? "#5a9eeb"
+                      ? "rgba(255, 255, 255, 0.2)"
                       : "rgba(255, 255, 255, 0.08)",
+                    transform: "translateX(4px)",
+                    transition: "all 0.2s"
                   },
                 }}
               >
                 <ListItemIcon
                   sx={{
                     color: isActive(item.path)
-                      ? "#fff"
-                      : "rgba(255, 255, 255, 0.7)",
+                      ? "var(--accent-color)"
+                      : "var(--sidebar-text)",
                     minWidth: 40,
+                    opacity: isActive(item.path) ? 1 : 0.9,
                   }}
                 >
                   {item.icon}

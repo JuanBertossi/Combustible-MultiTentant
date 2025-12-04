@@ -1,10 +1,20 @@
+// DashboardLayout.tsx
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../Layout/Sidebar";
 import Header from "../Layout/Header";
+import ProgressBar from "@/components/common/ProgressBar/ProgressBar"; // Ajustá la ruta
+import { useState } from "react";
+
 export default function DashboardLayout() {
+  // Estado global para loading (controlado desde páginas hijas si querés)
+  const [globalLoading, setGlobalLoading] = useState(false);
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {/* ✅ ProgressBar GLOBAL - ARRIBA DE TODO */}
+      <ProgressBar visible={globalLoading} />
+      
       <Sidebar />
       <Box
         component="main"

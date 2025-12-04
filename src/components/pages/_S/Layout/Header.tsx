@@ -1,3 +1,4 @@
+// components/pages/_S/Layout/Header.tsx
 import {
   AppBar,
   Toolbar,
@@ -17,16 +18,17 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
-// Asegúrate de que las rutas y tipos de auth sean correctos para tu proyecto
-import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider"; 
+import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider";
 import { useNavigate } from "react-router-dom";
 import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTheme } from "@/components/providers/theme/use-theme";
 
 type UserRole = "admin" | "superadmin";
 
 export default function Header() {
-  const { user, logout } = useTenantAuth(); // Asume que 'user' tiene 'name', 'email' y 'role'
-  const { name: tenantName } = useTenantContext(); // Asume que se obtiene el nombre del tenant
+  const { user, logout } = useTenantAuth();
+  const { name: tenantName } = useTenantContext();
+  const { tenantTheme } = useTheme();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -39,30 +41,19 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    logout(); // Implementación de cierre de sesión
+    logout();
   };
 
   const getAvatarColor = (nombre: string | undefined): string => {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#8b5cf6",
-      "#ec4899",
-      "#06b6d4",
-      "#1E2C56",
-    ];
-    if (!nombre) return colors[0] ?? "#3b82f6";
-    const index = nombre.charCodeAt(0) % colors.length;
-    return colors[index] ?? "#3b82f6";
+    return tenantTheme?.primaryColor || "#3b82f6";
   };
 
   const getRolColor = (
     rol: UserRole | undefined
   ): { bg: string; color: string } => {
     const colors: Record<UserRole, { bg: string; color: string }> = {
-      admin: { bg: "#ef444415", color: "#ef4444" }, // Rojo suave para Admin
-      superadmin: { bg: "#8b5cf615", color: "#8b5cf6" }, // Púrpura suave para SuperAdmin
+      admin: { bg: "#ef444415", color: "#ef4444" },
+      superadmin: { bg: "#8b5cf615", color: "#8b5cf6" },
     };
     return rol ? colors[rol] : { bg: "#99999915", color: "#999" };
   };
@@ -84,7 +75,7 @@ export default function Header() {
       bgcolor: "rgba(255, 255, 255, 1)",
       transform: "scale(1.05)",
       transition: "all 0.2s",
-      borderColor: "#94a3b8",
+      borderColor: tenantTheme?.primaryColor || "#94a3b8",
     },
   };
 
@@ -93,15 +84,15 @@ export default function Header() {
       position="sticky"
       elevation={0}
       sx={{
-        background: "#E1E9EF", // Fondo base sutil
-        backdropFilter: "blur(20px)", // Efecto de cristal para el fondo
-        borderBottom: "1px solid rgba(180, 195, 205, 0.6)",
+        background: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(20px)",
+        borderBottom: `1px solid rgba(226, 232, 240, 0.6)`,
         zIndex: (theme) => theme.zIndex.drawer - 1,
-        boxShadow: "0 2px 8px rgba(30, 44, 86, 0.08)",
+        boxShadow: `0 2px 8px rgba(0, 0, 0, 0.08)`,
       }}
     >
       <Toolbar sx={{ minHeight: "72px !important", px: 4 }}>
-        {/* Lado Izquierdo (Bienvenida y Rol) */}
+        {/* Lado Izquierdo */}
         <Box
           sx={{
             flexGrow: 1,
@@ -131,7 +122,7 @@ export default function Header() {
                 fontSize: 20,
                 lineHeight: 1,
                 fontWeight: 600,
-                color: "#1e293b",
+                color: tenantTheme?.primaryColor || "#1e293b",
                 letterSpacing: "-0.3px",
               }}
             >
@@ -153,7 +144,7 @@ export default function Header() {
           </Box>
         </Box>
 
-        {/* Lado Derecho (Notificaciones y Avatar) */}
+        {/* Lado Derecho */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
           {/* Notificaciones */}
           <IconButton sx={commonIconButtonStyle}>
@@ -166,7 +157,8 @@ export default function Header() {
                   height: 19,
                   minWidth: 19,
                   fontWeight: 700,
-                  boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
+                  bgcolor: tenantTheme?.accentColor || "#ef4444",
+                  boxShadow: `0 2px 8px rgba(16, 185, 129, 0.4)`,
                 },
               }}
             >
@@ -174,7 +166,7 @@ export default function Header() {
             </Badge>
           </IconButton>
 
-          {/* Avatar (Click para Menú) */}
+          {/* Avatar */}
           <IconButton
             onClick={handleMenu}
             sx={{
@@ -193,7 +185,7 @@ export default function Header() {
                 fontWeight: 700,
                 fontSize: 17,
                 border: "3px solid rgba(255,255,255,0.9)",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+                boxShadow: `0 4px 14px rgba(0,0,0,0.12)`,
                 cursor: "pointer",
               }}
             >
@@ -203,7 +195,7 @@ export default function Header() {
           </IconButton>
         </Box>
 
-        {/* Menú de Perfil (Dropdown) */}
+        {/* Menú de Perfil */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
@@ -220,7 +212,6 @@ export default function Header() {
               background: "rgba(255, 255, 255, 0.98)",
               backdropFilter: "blur(20px)",
               "&:before": {
-                // Triángulo apuntando al Avatar
                 content: '""',
                 display: "block",
                 position: "absolute",
@@ -245,7 +236,7 @@ export default function Header() {
           transformOrigin={{ horizontal: "right", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         >
-          {/* Bloque de Información del Usuario */}
+          {/* Info Usuario */}
           <Box sx={{ px: 3, py: 3 }}>
             <Box
               sx={{ display: "flex", alignItems: "center", gap: 2.5, mb: 2.5 }}
@@ -270,7 +261,7 @@ export default function Header() {
                     mb: 0.8,
                     fontWeight: 700,
                     fontSize: 16,
-                    color: "#1e293b",
+                    color: tenantTheme?.primaryColor || "#1e293b",
                     letterSpacing: "-0.3px",
                   }}
                 >
@@ -327,7 +318,6 @@ export default function Header() {
 
           <Divider sx={{ borderColor: "rgba(226, 232, 240, 0.6)" }} />
 
-          {/* Opciones de Navegación */}
           <Box sx={{ p: 1.5 }}>
             <MenuItem
               onClick={handleClose}
@@ -351,7 +341,6 @@ export default function Header() {
 
           <Divider sx={{ borderColor: "rgba(226, 232, 240, 0.6)" }} />
 
-          {/* Cerrar Sesión */}
           <MenuItem
             onClick={handleLogout}
             sx={{
