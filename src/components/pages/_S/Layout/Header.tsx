@@ -18,17 +18,16 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider";
+import { useAuthStore } from "@/stores/auth.store";
+import { useTenantStore } from "@/stores/tenant.store";
 import { useNavigate } from "react-router-dom";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
-import { useTheme } from "@/components/providers/theme/use-theme";
-
-type UserRole = "admin" | "superadmin";
+import type { UserRole } from "@/types";
 
 export default function Header() {
-  const { user, logout } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
-  const { tenantTheme } = useTheme();
+  const { user, logout } = useAuthStore();
+  const { tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
+  const tenantTheme = tenantConfig?.theme;
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -42,9 +41,10 @@ export default function Header() {
 
   const handleLogout = () => {
     logout();
+    navigate("/s/login");
   };
 
-  const getAvatarColor = (nombre: string | undefined): string => {
+  const getAvatarColor = (): string => {
     return tenantTheme?.primaryColor || "#3b82f6";
   };
 
@@ -52,16 +52,22 @@ export default function Header() {
     rol: UserRole | undefined
   ): { bg: string; color: string } => {
     const colors: Record<UserRole, { bg: string; color: string }> = {
-      admin: { bg: "#ef444415", color: "#ef4444" },
       superadmin: { bg: "#8b5cf615", color: "#8b5cf6" },
+      admin: { bg: "#ef444415", color: "#ef4444" },
+      supervisor: { bg: "#3b82f615", color: "#3b82f6" },
+      operador: { bg: "#10b98115", color: "#10b981" },
+      auditor: { bg: "#f59e0b15", color: "#f59e0b" },
     };
     return rol ? colors[rol] : { bg: "#99999915", color: "#999" };
   };
 
   const getRolLabel = (rol: UserRole | undefined): string => {
     const labels: Record<UserRole, string> = {
-      admin: "Admin",
       superadmin: "SuperAdmin",
+      admin: "Admin",
+      supervisor: "Supervisor",
+      operador: "Operador",
+      auditor: "Auditor",
     };
     return rol ? labels[rol] : "Usuario";
   };
@@ -129,11 +135,11 @@ export default function Header() {
               {user?.name}
             </Typography>
             <Chip
-              label={getRolLabel(user?.role as UserRole)}
+              label={getRolLabel(user?.role)}
               size="small"
               sx={{
-                bgcolor: getRolColor(user?.role as UserRole).bg,
-                color: getRolColor(user?.role as UserRole).color,
+                bgcolor: getRolColor(user?.role).bg,
+                color: getRolColor(user?.role).color,
                 fontWeight: 700,
                 height: 26,
                 fontSize: 12,
@@ -157,7 +163,7 @@ export default function Header() {
                   height: 19,
                   minWidth: 19,
                   fontWeight: 700,
-                  bgcolor: tenantTheme?.accentColor || "#ef4444",
+                  bgcolor: tenantTheme?.secondaryColor || "#ef4444",
                   boxShadow: `0 2px 8px rgba(16, 185, 129, 0.4)`,
                 },
               }}
@@ -179,7 +185,7 @@ export default function Header() {
           >
             <Avatar
               sx={{
-                bgcolor: getAvatarColor(user?.name),
+                bgcolor: getAvatarColor(),
                 width: 46,
                 height: 46,
                 fontWeight: 700,
@@ -243,7 +249,7 @@ export default function Header() {
             >
               <Avatar
                 sx={{
-                  bgcolor: getAvatarColor(user?.name),
+                  bgcolor: getAvatarColor(),
                   width: 60,
                   height: 60,
                   fontWeight: 700,
@@ -268,11 +274,11 @@ export default function Header() {
                   {user?.name}
                 </Typography>
                 <Chip
-                  label={getRolLabel(user?.role as UserRole)}
+                  label={getRolLabel(user?.role)}
                   size="small"
                   sx={{
-                    bgcolor: getRolColor(user?.role as UserRole).bg,
-                    color: getRolColor(user?.role as UserRole).color,
+                    bgcolor: getRolColor(user?.role).bg,
+                    color: getRolColor(user?.role).color,
                     fontWeight: 700,
                     height: 24,
                     fontSize: 11,

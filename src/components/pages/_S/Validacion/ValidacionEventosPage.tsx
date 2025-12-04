@@ -22,7 +22,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import WarningIcon from "@mui/icons-material/Warning";
 import ErrorIcon from "@mui/icons-material/Error";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
+import { useTenantStore } from "@/stores/tenant.store";
 import { format } from "date-fns";
 
 // Tipos
@@ -346,7 +346,7 @@ function EventoDetalle({
 }
 
 export default function ValidacionPage() {
-  const { user } = useTenantAuth();
+  const { user } = useTenantStore();
   const [eventos, setEventos] = useState<EventoExtended[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedEvento, setSelectedEvento] = useState<EventoExtended | null>(

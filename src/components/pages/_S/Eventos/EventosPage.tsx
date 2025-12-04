@@ -28,8 +28,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import * as XLSX from "xlsx";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 
 // Tipos
 interface EventoExtended {
@@ -178,8 +177,8 @@ const getEstadoColor = (estado: string) => {
 };
 
 export default function EventosPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [eventos, setEventos] = useState<EventoExtended[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

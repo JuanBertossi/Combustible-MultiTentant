@@ -3,18 +3,38 @@ import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../Layout/Sidebar";
 import Header from "../Layout/Header";
-import ProgressBar from "@/components/common/ProgressBar/ProgressBar"; // Ajustá la ruta
-import { useState } from "react";
+import ProgressBar from "@/components/common/ProgressBar/ProgressBar";
+import { useTenantStore } from "@/stores/tenant.store";
+import { useEffect } from "react";
+import { useTenantDomain } from "@/hooks/use-tenant-domain";
 
 export default function DashboardLayout() {
-  // Estado global para loading (controlado desde páginas hijas si querés)
-  const [globalLoading, setGlobalLoading] = useState(false);
+  const { tenantConfig, fetchTenantConfig, isLoading } = useTenantStore();
+  const tenantSlug = useTenantDomain();
+
+  // Cargar configuración del tenant si no está cargada
+  useEffect(() => {
+    if (tenantSlug && !tenantConfig && !isLoading) {
+      fetchTenantConfig(tenantSlug);
+    }
+  }, [tenantSlug, tenantConfig, isLoading, fetchTenantConfig]);
+
+  // CSS Variables dinámicas basadas en el tema del tenant
+  const cssVariables = {
+    "--primary-color": tenantConfig?.theme?.primaryColor || "#284057",
+    "--secondary-color": tenantConfig?.theme?.secondaryColor || "#66FF99",
+    "--accent-color": tenantConfig?.theme?.secondaryColor || "#66FF99",
+    "--sidebar-bg": tenantConfig?.theme?.primaryColor || "#284057",
+    "--sidebar-text": "#FFFFFF",
+    "--header-bg": "#FFFFFF",
+    "--content-bg": "#F4F8FA",
+  } as React.CSSProperties;
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* ✅ ProgressBar GLOBAL - ARRIBA DE TODO */}
-      <ProgressBar visible={globalLoading} />
-      
+    <Box sx={{ display: "flex", minHeight: "100vh" }} style={cssVariables}>
+      {/* ProgressBar GLOBAL - ARRIBA DE TODO */}
+      <ProgressBar visible={isLoading} />
+
       <Sidebar />
       <Box
         component="main"
@@ -24,7 +44,7 @@ export default function DashboardLayout() {
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
-          background: "#F4F8FA",
+          background: "var(--content-bg, #F4F8FA)",
           position: "relative",
           "&::before": {
             content: '""',
@@ -33,7 +53,7 @@ export default function DashboardLayout() {
             left: 0,
             right: 0,
             height: "280px",
-            background: "#F4F8FA",
+            background: "var(--content-bg, #F4F8FA)",
             borderRadius: "0 0 50% 50% / 0 0 30px 30px",
             zIndex: 0,
             pointerEvents: "none",

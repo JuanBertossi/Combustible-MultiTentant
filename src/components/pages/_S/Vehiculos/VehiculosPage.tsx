@@ -24,8 +24,7 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 import * as XLSX from "xlsx";
 
 type TipoVehiculo =
@@ -138,8 +137,8 @@ const getColorByTipo = (tipo: TipoVehiculo): string => {
 };
 
 export default function VehiculosPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

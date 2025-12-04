@@ -1,7 +1,8 @@
+// src/components/pages/_S/Login/LoginPage.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTenantAuth } from "../../../providers/auth/_S/TenantAuthProvider";
-import { useTenant } from "@/components/providers/tenants/tenant-provider";
+import { useTenantStore } from "@/stores/tenant.store";
+import { useTenantDomain } from "@/hooks/use-tenant-domain";
 import {
   Box,
   Card,
@@ -18,17 +19,36 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 
 export default function LoginPage() {
-  const { isAuthenticated, login } = useTenantAuth();
-  const { tenant, tenantSlug, loading: loadingTenant } = useTenant();
   const navigate = useNavigate();
+  const tenantSlug = useTenantDomain();
+  const {
+    login,
+    isAuthenticated,
+    isLoading,
+    error,
+    clearError,
+    tenantConfig,
+    fetchTenantConfig,
+  } = useTenantStore();
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const primaryColor = "#1E2C56";
-  const secondaryColor = "#4A90E2";
+  const [localError, setLocalError] = useState<string>("");
+  const [loadingTenant, setLoadingTenant] = useState(true);
 
+  const primaryColor = tenantConfig?.theme?.primaryColor || "#1E2C56";
+  const secondaryColor = tenantConfig?.theme?.secondaryColor || "#4A90E2";
+
+  // Cargar configuración del tenant
+  useEffect(() => {
+    if (tenantSlug && !tenantConfig) {
+      fetchTenantConfig(tenantSlug).finally(() => setLoadingTenant(false));
+    } else {
+      setLoadingTenant(false);
+    }
+  }, [tenantSlug, tenantConfig, fetchTenantConfig]);
+
+  // Redirigir si ya está autenticado
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/s/dashboard", { replace: true });
@@ -39,26 +59,23 @@ export default function LoginPage() {
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault();
-    setError("");
+    setLocalError("");
+    clearError();
 
     if (!email || !password) {
-      setError("Por favor ingresa email y contraseña");
+      setLocalError("Por favor ingresa email y contraseña");
       return;
     }
 
-    setIsLoading(true);
     try {
-      console.log("Intentando login en tenant:", tenantSlug);
-      await login({ email, password });
-      console.log("Login exitoso, redirigiendo a /s");
-      navigate("/s");
-    } catch (err: unknown) {
-      console.error("Error login:", err);
-      setError(err instanceof Error ? err.message : "Credenciales inválidas");
-    } finally {
-      setIsLoading(false);
+      await login(email, password);
+      navigate("/s/dashboard");
+    } catch {
+      // Error ya manejado en el store
     }
   };
+
+  const displayError = localError || error;
 
   if (loadingTenant) {
     return (
@@ -68,9 +85,10 @@ export default function LoginPage() {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
+          bgcolor: "#F4F8FA",
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: primaryColor }} />
       </Box>
     );
   }
@@ -86,9 +104,7 @@ export default function LoginPage() {
           p: 3,
         }}
       >
-        <Alert severity="error">
-          No se pudo detectar el subdominio
-        </Alert>
+        <Alert severity="error">No se pudo detectar el subdominio</Alert>
       </Box>
     );
   }
@@ -164,10 +180,7 @@ export default function LoginPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `
-      0 0 18px ${secondaryColor}55,
-      0 4px 12px rgba(0,0,0,0.25)
-    `,
+                boxShadow: `0 0 18px ${secondaryColor}55, 0 4px 12px rgba(0,0,0,0.25)`,
                 transition: "all 0.25s ease",
                 border: "2px solid rgba(255, 255, 255, 0.25)",
               }}
@@ -180,7 +193,7 @@ export default function LoginPage() {
               fontWeight="700"
               sx={{ mb: 0.5, letterSpacing: 0.3 }}
             >
-              {tenant?.name?.toUpperCase()}
+              {tenantConfig?.name?.toUpperCase() || tenantSlug.toUpperCase()}
             </Typography>
             <Typography
               variant="caption"
@@ -206,13 +219,14 @@ export default function LoginPage() {
               </Typography>
               <TextField
                 fullWidth
-                placeholder={`admin@${tenant?.domain || "empresa.com"}`}
+                placeholder={`admin@${tenantSlug}.com`}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 size="small"
                 required
                 autoFocus
+                disabled={isLoading}
                 InputProps={{
                   startAdornment: (
                     <EmailOutlinedIcon
@@ -225,16 +239,9 @@ export default function LoginPage() {
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "rgba(255, 255, 255, 0.9)",
                     borderRadius: 1.5,
-                    "& input": {
-                      py: 1.3,
-                      fontSize: "0.9rem",
-                    },
-                    "& fieldset": {
-                      borderColor: "rgba(0, 0, 0, 0.1)",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: secondaryColor,
-                    },
+                    "& input": { py: 1.3, fontSize: "0.9rem" },
+                    "& fieldset": { borderColor: "rgba(0, 0, 0, 0.1)" },
+                    "&:hover fieldset": { borderColor: secondaryColor },
                     "&.Mui-focused fieldset": {
                       borderColor: primaryColor,
                       borderWidth: 2,
@@ -263,6 +270,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 size="small"
                 required
+                disabled={isLoading}
                 InputProps={{
                   startAdornment: (
                     <LockOutlinedIcon
@@ -275,16 +283,9 @@ export default function LoginPage() {
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "rgba(255, 255, 255, 0.9)",
                     borderRadius: 1.5,
-                    "& input": {
-                      py: 1.3,
-                      fontSize: "0.9rem",
-                    },
-                    "& fieldset": {
-                      borderColor: "rgba(0, 0, 0, 0.1)",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: secondaryColor,
-                    },
+                    "& input": { py: 1.3, fontSize: "0.9rem" },
+                    "& fieldset": { borderColor: "rgba(0, 0, 0, 0.1)" },
+                    "&:hover fieldset": { borderColor: secondaryColor },
                     "&.Mui-focused fieldset": {
                       borderColor: primaryColor,
                       borderWidth: 2,
@@ -293,7 +294,7 @@ export default function LoginPage() {
                 }}
               />
 
-              {error && (
+              {displayError && (
                 <Alert
                   severity="error"
                   sx={{
@@ -303,7 +304,7 @@ export default function LoginPage() {
                     borderRadius: 1.5,
                   }}
                 >
-                  {error}
+                  {displayError}
                 </Alert>
               )}
 
@@ -331,7 +332,14 @@ export default function LoginPage() {
                   transition: "all 0.3s ease",
                 }}
               >
-                {isLoading ? "Iniciando..." : "Iniciar Sesión"}
+                {isLoading ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <CircularProgress size={20} color="inherit" />
+                    <span>Iniciando...</span>
+                  </Box>
+                ) : (
+                  "Iniciar Sesión"
+                )}
               </Button>
             </form>
           </CardContent>

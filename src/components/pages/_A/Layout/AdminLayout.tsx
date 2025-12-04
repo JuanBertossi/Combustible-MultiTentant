@@ -1,6 +1,7 @@
 // src/components/pages/_A/Layout/AdminLayout.tsx
 import { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth.store";
 import {
   Box,
   AppBar,
@@ -29,7 +30,6 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import { useAdminAuth } from "@/components/providers/auth/_A/AdminAuthProvider";
 
 // Theme colors
 const theme = {
@@ -59,7 +59,7 @@ const navItems: NavItem[] = [
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAdminAuth();
+  const { user, logout } = useAuthStore();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("md"));
 
@@ -200,7 +200,9 @@ export default function AdminLayout() {
               fontWeight: 700,
             }}
           >
-            {user?.email?.charAt(0).toUpperCase() || "A"}
+            {user?.name?.charAt(0).toUpperCase() ||
+              user?.email?.charAt(0).toUpperCase() ||
+              "A"}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
@@ -212,7 +214,7 @@ export default function AdminLayout() {
                 whiteSpace: "nowrap",
               }}
             >
-              {user?.email?.split("@")[0] || "Admin"}
+              {user?.name || user?.email?.split("@")[0] || "Admin"}
             </Typography>
             <Typography variant="caption" sx={{ opacity: 0.6 }}>
               Super Admin
@@ -257,7 +259,9 @@ export default function AdminLayout() {
                 fontSize: 12,
               }}
             >
-              {user?.email?.charAt(0).toUpperCase() || "A"}
+              {user?.name?.charAt(0).toUpperCase() ||
+                user?.email?.charAt(0).toUpperCase() ||
+                "A"}
             </Avatar>
           </IconButton>
         </Toolbar>
@@ -340,7 +344,9 @@ export default function AdminLayout() {
                   fontWeight: 700,
                 }}
               >
-                {user?.email?.charAt(0).toUpperCase() || "A"}
+                {user?.name?.charAt(0).toUpperCase() ||
+                  user?.email?.charAt(0).toUpperCase() ||
+                  "A"}
               </Avatar>
             </IconButton>
           </Toolbar>
@@ -373,7 +379,7 @@ export default function AdminLayout() {
       >
         <Box sx={{ px: 2, py: 1.5 }}>
           <Typography variant="subtitle2" fontWeight={700}>
-            {user?.email?.split("@")[0] || "Admin"}
+            {user?.name || user?.email?.split("@")[0] || "Admin"}
           </Typography>
           <Typography variant="caption" color={theme.textSecondary}>
             {user?.email || "admin@goodapps.com"}

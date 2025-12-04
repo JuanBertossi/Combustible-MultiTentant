@@ -26,8 +26,7 @@ import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 import * as XLSX from "xlsx";
 
 type UserRole = "superadmin" | "admin" | "supervisor" | "operator" | "auditor";
@@ -128,8 +127,8 @@ const mockUsuarios: Usuario[] = [
 ];
 
 export default function UsuariosPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext(); // no usamos id para no romper
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

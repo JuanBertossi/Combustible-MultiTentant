@@ -1,5 +1,13 @@
 // src/components/pages/_A/Empresas/EmpresasPage.tsx
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import {
+  useEmpresas,
+  useCreateEmpresa,
+  useUpdateEmpresa,
+  useDeleteEmpresa,
+} from "@/hooks/queries/useEmpresas";
+import type { Empresa, EmpresaFormData, EmpresaPolicies } from "@/types";
+import { DEFAULT_POLICIES, DEFAULT_THEME } from "@/types";
 import {
   Box,
   Button,
@@ -30,6 +38,7 @@ import {
   Checkbox,
   FormGroup,
   Slider,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -57,10 +66,11 @@ import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
 import SpeedIcon from "@mui/icons-material/Speed";
-import PropaneTankIcon from "@mui/icons-material/PropaneTank";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import * as XLSX from "xlsx";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 // Theme colors
 const theme = {
@@ -78,19 +88,12 @@ const theme = {
   info: "#3B82F6",
 };
 
-// Interfaces
-interface EmpresaStats {
-  usuarios: number;
-  vehiculos: number;
-  eventosHoy: number;
-  eventosMes: number;
-  litrosMes: number;
-  costoMes: number;
-  eventosValidados: number;
-  eventosPendientes: number;
+interface FormErrors {
+  [key: string]: string;
 }
 
-interface EmpresaPolicies {
+// Mapeo de interfaces para compatibilidad
+interface LocalEmpresaPolicies {
   requiereFotoSurtidor: boolean;
   requiereFotoOdometro: boolean;
   requiereFotoCuentaLitros: boolean;
@@ -102,134 +105,31 @@ interface EmpresaPolicies {
   validacionAutomatica: boolean;
 }
 
-interface Empresa {
-  id: number;
-  slug: string;
-  name: string;
-  domain?: string;
-  logo?: string;
-  primaryColor?: string;
-  secondaryColor?: string;
-  adminEmail?: string;
-  adminPhone?: string;
-  activo: boolean;
-  createdAt?: string;
-  plan?: "basic" | "professional" | "enterprise";
-  stats?: EmpresaStats;
-  policies?: EmpresaPolicies;
-}
-
-interface EmpresaFormData {
-  slug: string;
-  name: string;
-  domain: string;
+interface LocalEmpresaFormData {
+  subdomain: string;
+  nombre: string;
+  razonSocial: string;
   adminEmail: string;
-  adminPhone: string;
+  telefono: string;
   primaryColor: string;
   secondaryColor: string;
   activo: boolean;
-  plan: "basic" | "professional" | "enterprise";
-  policies: EmpresaPolicies;
-}
-
-interface FormErrors {
-  [key: string]: string;
+  subscriptionPlan: "basic" | "professional" | "enterprise";
+  policies: LocalEmpresaPolicies;
 }
 
 // Default policies
-const defaultPolicies: EmpresaPolicies = {
+const defaultLocalPolicies: LocalEmpresaPolicies = {
   requiereFotoSurtidor: true,
   requiereFotoOdometro: true,
   requiereFotoCuentaLitros: false,
   requiereUbicacion: true,
   requiereAudio: false,
   litrosMaximoPorCarga: 500,
-  precioCombustible: 1.25,
+  precioCombustible: 850,
   alertaDuplicados: true,
   validacionAutomatica: false,
 };
-
-// Mock data inicial
-const mockEmpresas: Empresa[] = [
-  {
-    id: 1,
-    slug: "transportes-sur",
-    name: "Transportes del Sur S.A.",
-    domain: "transportes-sur.com",
-    adminEmail: "admin@transportes-sur.com",
-    adminPhone: "+54 11 4567-8900",
-    primaryColor: "#1E2C56",
-    secondaryColor: "#4A90E2",
-    activo: true,
-    createdAt: "2024-01-15",
-    plan: "professional",
-    stats: {
-      usuarios: 45,
-      vehiculos: 32,
-      eventosHoy: 18,
-      eventosMes: 342,
-      litrosMes: 15420,
-      costoMes: 19275,
-      eventosValidados: 320,
-      eventosPendientes: 22,
-    },
-    policies: {
-      ...defaultPolicies,
-      requiereFotoCuentaLitros: true,
-    },
-  },
-  {
-    id: 2,
-    slug: "logistica-express",
-    name: "Logística Express",
-    domain: "logistica-express.com",
-    adminEmail: "admin@logistica-express.com",
-    adminPhone: "+54 11 2345-6789",
-    primaryColor: "#10b981",
-    secondaryColor: "#059669",
-    activo: true,
-    createdAt: "2024-02-20",
-    plan: "enterprise",
-    stats: {
-      usuarios: 120,
-      vehiculos: 85,
-      eventosHoy: 52,
-      eventosMes: 1250,
-      litrosMes: 58200,
-      costoMes: 72750,
-      eventosValidados: 1180,
-      eventosPendientes: 70,
-    },
-    policies: defaultPolicies,
-  },
-  {
-    id: 3,
-    slug: "agro-campos",
-    name: "Agro Campos S.R.L.",
-    domain: "agrocampos.com.ar",
-    adminEmail: "sistemas@agrocampos.com.ar",
-    adminPhone: "+54 351 456-7890",
-    primaryColor: "#854d0e",
-    secondaryColor: "#eab308",
-    activo: false,
-    createdAt: "2024-03-10",
-    plan: "basic",
-    stats: {
-      usuarios: 12,
-      vehiculos: 8,
-      eventosHoy: 0,
-      eventosMes: 45,
-      litrosMes: 2100,
-      costoMes: 2625,
-      eventosValidados: 45,
-      eventosPendientes: 0,
-    },
-    policies: {
-      ...defaultPolicies,
-      requiereAudio: true,
-    },
-  },
-];
 
 const getInitials = (name: string): string => {
   return name
@@ -247,7 +147,8 @@ const formatNumber = (num: number): string => {
 const formatCurrency = (num: number): string => {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
-    currency: "USD",
+    currency: "ARS",
+    maximumFractionDigits: 0,
   }).format(num);
 };
 
@@ -448,9 +349,44 @@ function TabPanel({
   );
 }
 
+// Helper para convertir políticas
+function mapPoliciesFromApi(policies: EmpresaPolicies): LocalEmpresaPolicies {
+  return {
+    requiereFotoSurtidor: policies.requireFuelPumpPhoto,
+    requiereFotoOdometro: policies.requireOdometerPhoto,
+    requiereFotoCuentaLitros: false,
+    requiereUbicacion: policies.requiredLocation,
+    requiereAudio: policies.requiredAudio,
+    litrosMaximoPorCarga: policies.maxLitrosThreshold,
+    precioCombustible: policies.fuelPrice,
+    alertaDuplicados: true,
+    validacionAutomatica: policies.autoValidateEvents,
+  };
+}
+
+function mapPoliciesToApi(policies: LocalEmpresaPolicies): EmpresaPolicies {
+  return {
+    ...DEFAULT_POLICIES,
+    requireFuelPumpPhoto: policies.requiereFotoSurtidor,
+    requireOdometerPhoto: policies.requiereFotoOdometro,
+    requiredLocation: policies.requiereUbicacion,
+    requiredAudio: policies.requiereAudio,
+    maxLitrosThreshold: policies.litrosMaximoPorCarga,
+    fuelPrice: policies.precioCombustible,
+    autoValidateEvents: policies.validacionAutomatica,
+  };
+}
+
 export default function EmpresasPage() {
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // React Query hooks
+  const { data: empresasResponse, isLoading: loading } = useEmpresas();
+  const createMutation = useCreateEmpresa();
+  const updateMutation = useUpdateEmpresa();
+  const deleteMutation = useDeleteEmpresa();
+
+  const empresas = empresasResponse?.data || [];
+
+  // Local state
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
   const [openDetailDrawer, setOpenDetailDrawer] = useState<boolean>(false);
@@ -460,92 +396,80 @@ export default function EmpresasPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState(0);
-  const [formData, setFormData] = useState<EmpresaFormData>({
-    slug: "",
-    name: "",
-    domain: "",
+  const [formData, setFormData] = useState<LocalEmpresaFormData>({
+    subdomain: "",
+    nombre: "",
+    razonSocial: "",
     adminEmail: "",
-    adminPhone: "",
+    telefono: "",
     primaryColor: "#284057",
     secondaryColor: "#66FF99",
     activo: true,
-    plan: "basic",
-    policies: defaultPolicies,
+    subscriptionPlan: "basic",
+    policies: defaultLocalPolicies,
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    loadEmpresas();
-  }, []);
-
-  const loadEmpresas = async () => {
-    setLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setEmpresas(mockEmpresas);
-    } catch (error) {
-      console.error("Error loading empresas:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredEmpresas = empresas.filter((e) => {
-    const matchSearch =
-      e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (e.domain && e.domain.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (e.adminEmail &&
-        e.adminEmail.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchSearch;
-  });
+  const filteredEmpresas = useMemo(() => {
+    return empresas.filter((e) => {
+      const matchSearch =
+        e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.subdomain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.adminEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchSearch;
+    });
+  }, [empresas, searchTerm]);
 
   // Calculate totals for header
-  const totals = {
-    empresas: empresas.length,
-    activas: empresas.filter((e) => e.activo).length,
-    usuarios: empresas.reduce((acc, e) => acc + (e.stats?.usuarios || 0), 0),
-    vehiculos: empresas.reduce((acc, e) => acc + (e.stats?.vehiculos || 0), 0),
-  };
+  const totals = useMemo(
+    () => ({
+      empresas: empresas.length,
+      activas: empresas.filter((e) => e.activo).length,
+      usuarios: empresas.reduce(
+        (acc, e) => acc + (e.stats?.totalUsers || 0),
+        0
+      ),
+      vehiculos: empresas.reduce(
+        (acc, e) => acc + (e.stats?.totalVehicles || 0),
+        0
+      ),
+    }),
+    [empresas]
+  );
 
   const handleExport = (): void => {
     const dataToExport = filteredEmpresas.map((e) => ({
-      Slug: e.slug,
-      Nombre: e.name,
-      Dominio: e.domain || "",
-      "Email Admin": e.adminEmail || "",
-      "Teléfono Admin": e.adminPhone || "",
-      Plan: e.plan || "basic",
+      Subdomain: e.subdomain,
+      Nombre: e.nombre,
+      "Razón Social": e.razonSocial || "",
+      "Email Admin": e.adminEmail,
+      Teléfono: e.telefono || "",
+      Plan: e.subscriptionPlan,
       Estado: e.activo ? "Activo" : "Inactivo",
-      Usuarios: e.stats?.usuarios || 0,
-      Vehículos: e.stats?.vehiculos || 0,
-      "Eventos Mes": e.stats?.eventosMes || 0,
-      "Litros Mes": e.stats?.litrosMes || 0,
-      "Fecha Creación": e.createdAt || "",
+      "Fecha Creación": e.createdAt
+        ? format(new Date(e.createdAt), "dd/MM/yyyy", { locale: es })
+        : "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Empresas");
-    XLSX.writeFile(
-      wb,
-      `Empresas_${new Date().toISOString().split("T")[0]}.xlsx`
-    );
+    XLSX.writeFile(wb, `Empresas_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
   const handleNew = (): void => {
     setEditingEmpresa(null);
     setFormData({
-      slug: "",
-      name: "",
-      domain: "",
+      subdomain: "",
+      nombre: "",
+      razonSocial: "",
       adminEmail: "",
-      adminPhone: "",
-      primaryColor: "#284057",
-      secondaryColor: "#66FF99",
+      telefono: "",
+      primaryColor: DEFAULT_THEME.primaryColor,
+      secondaryColor: DEFAULT_THEME.secondaryColor,
       activo: true,
-      plan: "basic",
-      policies: defaultPolicies,
+      subscriptionPlan: "basic",
+      policies: defaultLocalPolicies,
     });
     setErrors({});
     setActiveTab(0);
@@ -555,16 +479,16 @@ export default function EmpresasPage() {
   const handleEdit = (empresa: Empresa): void => {
     setEditingEmpresa(empresa);
     setFormData({
-      slug: empresa.slug,
-      name: empresa.name,
-      domain: empresa.domain || "",
-      adminEmail: empresa.adminEmail || "",
-      adminPhone: empresa.adminPhone || "",
-      primaryColor: empresa.primaryColor || "#284057",
-      secondaryColor: empresa.secondaryColor || "#66FF99",
+      subdomain: empresa.subdomain,
+      nombre: empresa.nombre,
+      razonSocial: empresa.razonSocial || "",
+      adminEmail: empresa.adminEmail,
+      telefono: empresa.telefono || "",
+      primaryColor: empresa.theme.primaryColor,
+      secondaryColor: empresa.theme.secondaryColor,
       activo: empresa.activo,
-      plan: empresa.plan || "basic",
-      policies: empresa.policies || defaultPolicies,
+      subscriptionPlan: empresa.subscriptionPlan,
+      policies: mapPoliciesFromApi(empresa.policies),
     });
     setErrors({});
     setActiveTab(0);
@@ -584,18 +508,14 @@ export default function EmpresasPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.slug.trim()) {
-      newErrors.slug = "El slug es requerido";
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = "Solo letras minúsculas, números y guiones";
+    if (!formData.subdomain.trim()) {
+      newErrors.subdomain = "El subdomain es requerido";
+    } else if (!/^[a-z0-9-]+$/.test(formData.subdomain)) {
+      newErrors.subdomain = "Solo letras minúsculas, números y guiones";
     }
 
-    if (!formData.name.trim()) {
-      newErrors.name = "El nombre es requerido";
-    }
-
-    if (!formData.domain.trim()) {
-      newErrors.domain = "El dominio es requerido";
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es requerido";
     }
 
     if (!formData.adminEmail.trim()) {
@@ -611,36 +531,33 @@ export default function EmpresasPage() {
   const handleSave = async (): Promise<void> => {
     if (!validateForm()) return;
 
+    const apiData: EmpresaFormData = {
+      nombre: formData.nombre,
+      razonSocial: formData.razonSocial,
+      subdomain: formData.subdomain,
+      adminEmail: formData.adminEmail,
+      telefono: formData.telefono,
+      activo: formData.activo,
+      theme: {
+        primaryColor: formData.primaryColor,
+        secondaryColor: formData.secondaryColor,
+      },
+      policies: mapPoliciesToApi(formData.policies),
+      subscriptionPlan: formData.subscriptionPlan,
+    };
+
     try {
       if (editingEmpresa) {
-        setEmpresas(
-          empresas.map((e) =>
-            e.id === editingEmpresa.id
-              ? { ...e, ...formData, policies: formData.policies }
-              : e
-          )
-        );
+        await updateMutation.mutateAsync({
+          id: editingEmpresa.id,
+          data: apiData,
+        });
       } else {
-        const newEmpresa: Empresa = {
-          id: Math.max(...empresas.map((e) => e.id), 0) + 1,
-          ...formData,
-          createdAt: new Date().toISOString().split("T")[0],
-          stats: {
-            usuarios: 0,
-            vehiculos: 0,
-            eventosHoy: 0,
-            eventosMes: 0,
-            litrosMes: 0,
-            costoMes: 0,
-            eventosValidados: 0,
-            eventosPendientes: 0,
-          },
-        };
-        setEmpresas([...empresas, newEmpresa]);
+        await createMutation.mutateAsync(apiData);
       }
       setOpenDialog(false);
-    } catch (error) {
-      console.error("Error saving empresa:", error);
+    } catch {
+      // Error ya manejado por el mutation
     }
   };
 
@@ -648,20 +565,23 @@ export default function EmpresasPage() {
     if (!deleteEmpresa) return;
 
     try {
-      setEmpresas(empresas.filter((e) => e.id !== deleteEmpresa.id));
+      await deleteMutation.mutateAsync(deleteEmpresa.id);
       setOpenDeleteDialog(false);
       setDeleteEmpresa(null);
-    } catch (error) {
-      console.error("Error deleting empresa:", error);
+    } catch {
+      // Error ya manejado por el mutation
     }
   };
 
   const copyLoginUrl = (empresa: Empresa): void => {
-    const url = `${window.location.origin}/${empresa.slug}/login`;
+    const url = `${window.location.origin}/${empresa.subdomain}/login`;
     navigator.clipboard.writeText(url);
     setCopiedId(empresa.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: theme.background, p: 3 }}>
@@ -856,7 +776,7 @@ export default function EmpresasPage() {
           }}
         >
           <TextField
-            placeholder="Buscar por nombre, slug, dominio o email..."
+            placeholder="Buscar por nombre, subdomain o email..."
             size="small"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -904,7 +824,6 @@ export default function EmpresasPage() {
             />
             <Chip
               label={`Activas (${empresas.filter((e) => e.activo).length})`}
-              onClick={() => setSearchTerm("")}
               sx={{
                 bgcolor: alpha(theme.success, 0.1),
                 color: theme.success,
@@ -1010,7 +929,7 @@ export default function EmpresasPage() {
                       zIndex: 1,
                     }}
                   >
-                    <PlanBadge plan={empresa.plan || "basic"} />
+                    <PlanBadge plan={empresa.subscriptionPlan} />
                     <Chip
                       icon={
                         empresa.activo ? (
@@ -1051,17 +970,17 @@ export default function EmpresasPage() {
                         sx={{
                           width: 56,
                           height: 56,
-                          bgcolor: empresa.primaryColor || theme.primary,
+                          bgcolor: empresa.theme.primaryColor || theme.primary,
                           fontSize: 20,
                           fontWeight: 800,
                           mr: 2,
                           boxShadow: `0 4px 12px ${alpha(
-                            empresa.primaryColor || theme.primary,
+                            empresa.theme.primaryColor || theme.primary,
                             0.35
                           )}`,
                         }}
                       >
-                        {getInitials(empresa.name)}
+                        {getInitials(empresa.nombre)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                         <Typography
@@ -1075,7 +994,7 @@ export default function EmpresasPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {empresa.name}
+                          {empresa.nombre}
                         </Typography>
                         <Typography
                           variant="caption"
@@ -1087,7 +1006,7 @@ export default function EmpresasPage() {
                             gap: 0.5,
                           }}
                         >
-                          <LinkIcon sx={{ fontSize: 12 }} />/{empresa.slug}
+                          <LinkIcon sx={{ fontSize: 12 }} />/{empresa.subdomain}
                         </Typography>
                       </Box>
                     </Box>
@@ -1109,7 +1028,7 @@ export default function EmpresasPage() {
                             sx={{ fontSize: 18, color: theme.info }}
                           />
                         }
-                        value={empresa.stats?.usuarios || 0}
+                        value={empresa.stats?.totalUsers || 0}
                         label="Usuarios"
                         color={theme.info}
                       />
@@ -1119,7 +1038,7 @@ export default function EmpresasPage() {
                             sx={{ fontSize: 18, color: theme.warning }}
                           />
                         }
-                        value={empresa.stats?.vehiculos || 0}
+                        value={empresa.stats?.totalVehicles || 0}
                         label="Vehículos"
                         color={theme.warning}
                       />
@@ -1129,7 +1048,7 @@ export default function EmpresasPage() {
                             sx={{ fontSize: 18, color: theme.success }}
                           />
                         }
-                        value={empresa.stats?.eventosHoy || 0}
+                        value={empresa.stats?.dailyEvents || 0}
                         label="Cargas hoy"
                         color={theme.success}
                       />
@@ -1155,16 +1074,16 @@ export default function EmpresasPage() {
                           fontWeight={700}
                           color={theme.primary}
                         >
-                          {empresa.stats?.eventosValidados || 0}/
-                          {empresa.stats?.eventosMes || 0}
+                          {empresa.stats?.validatedEvents || 0}/
+                          {empresa.stats?.monthlyEvents || 0}
                         </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
                         value={
-                          empresa.stats?.eventosMes
-                            ? ((empresa.stats?.eventosValidados || 0) /
-                                empresa.stats.eventosMes) *
+                          empresa.stats?.monthlyEvents
+                            ? ((empresa.stats?.validatedEvents || 0) /
+                                empresa.stats.monthlyEvents) *
                               100
                             : 0
                         }
@@ -1248,7 +1167,7 @@ export default function EmpresasPage() {
             <Box
               sx={{
                 p: 3,
-                bgcolor: selectedEmpresa.primaryColor || theme.primary,
+                bgcolor: selectedEmpresa.theme.primaryColor || theme.primary,
                 color: theme.surface,
               }}
             >
@@ -1270,14 +1189,14 @@ export default function EmpresasPage() {
                       fontWeight: 800,
                     }}
                   >
-                    {getInitials(selectedEmpresa.name)}
+                    {getInitials(selectedEmpresa.nombre)}
                   </Avatar>
                   <Box>
                     <Typography variant="h6" fontWeight={700}>
-                      {selectedEmpresa.name}
+                      {selectedEmpresa.nombre}
                     </Typography>
                     <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      /{selectedEmpresa.slug}
+                      /{selectedEmpresa.subdomain}
                     </Typography>
                   </Box>
                 </Box>
@@ -1290,7 +1209,7 @@ export default function EmpresasPage() {
               </Box>
 
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <PlanBadge plan={selectedEmpresa.plan || "basic"} />
+                <PlanBadge plan={selectedEmpresa.subscriptionPlan} />
                 <Chip
                   icon={
                     selectedEmpresa.activo ? (
@@ -1354,7 +1273,7 @@ export default function EmpresasPage() {
                     fontWeight={700}
                     color={theme.textPrimary}
                   >
-                    {formatNumber(selectedEmpresa.stats?.litrosMes || 0)}
+                    {formatNumber(selectedEmpresa.stats?.totalLitros || 0)}
                   </Typography>
                 </Card>
                 <Card
@@ -1381,7 +1300,7 @@ export default function EmpresasPage() {
                     fontWeight={700}
                     color={theme.textPrimary}
                   >
-                    {formatCurrency(selectedEmpresa.stats?.costoMes || 0)}
+                    {formatCurrency(selectedEmpresa.stats?.totalCostos || 0)}
                   </Typography>
                 </Card>
                 <Card
@@ -1406,7 +1325,7 @@ export default function EmpresasPage() {
                     fontWeight={700}
                     color={theme.textPrimary}
                   >
-                    {selectedEmpresa.stats?.eventosValidados || 0}
+                    {selectedEmpresa.stats?.validatedEvents || 0}
                   </Typography>
                 </Card>
                 <Card
@@ -1427,7 +1346,7 @@ export default function EmpresasPage() {
                     </Typography>
                   </Box>
                   <Typography variant="h5" fontWeight={700} color={theme.error}>
-                    {selectedEmpresa.stats?.eventosPendientes || 0}
+                    {selectedEmpresa.stats?.pendingEvents || 0}
                   </Typography>
                 </Card>
               </Box>
@@ -1464,10 +1383,10 @@ export default function EmpresasPage() {
                   <DomainIcon sx={{ color: theme.textSecondary }} />
                   <Box>
                     <Typography variant="caption" color={theme.textSecondary}>
-                      Dominio
+                      Subdomain
                     </Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {selectedEmpresa.domain}
+                      {selectedEmpresa.subdomain}
                     </Typography>
                   </Box>
                 </Box>
@@ -1478,7 +1397,15 @@ export default function EmpresasPage() {
                       Fecha de registro
                     </Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {selectedEmpresa.createdAt}
+                      {selectedEmpresa.createdAt
+                        ? format(
+                            new Date(selectedEmpresa.createdAt),
+                            "dd/MM/yyyy",
+                            {
+                              locale: es,
+                            }
+                          )
+                        : "-"}
                     </Typography>
                   </Box>
                 </Box>
@@ -1498,7 +1425,7 @@ export default function EmpresasPage() {
                 sx={{ p: 2, bgcolor: theme.surface, borderRadius: 3, mb: 3 }}
               >
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {selectedEmpresa.policies?.requiereFotoSurtidor && (
+                  {selectedEmpresa.policies?.requireFuelPumpPhoto && (
                     <Chip
                       icon={<PhotoCameraIcon />}
                       label="Foto Surtidor"
@@ -1509,7 +1436,7 @@ export default function EmpresasPage() {
                       }}
                     />
                   )}
-                  {selectedEmpresa.policies?.requiereFotoOdometro && (
+                  {selectedEmpresa.policies?.requireOdometerPhoto && (
                     <Chip
                       icon={<SpeedIcon />}
                       label="Foto Odómetro"
@@ -1520,18 +1447,7 @@ export default function EmpresasPage() {
                       }}
                     />
                   )}
-                  {selectedEmpresa.policies?.requiereFotoCuentaLitros && (
-                    <Chip
-                      icon={<PropaneTankIcon />}
-                      label="Foto Cuenta-litros"
-                      size="small"
-                      sx={{
-                        bgcolor: alpha(theme.success, 0.1),
-                        color: theme.success,
-                      }}
-                    />
-                  )}
-                  {selectedEmpresa.policies?.requiereUbicacion && (
+                  {selectedEmpresa.policies?.requiredLocation && (
                     <Chip
                       icon={<LocationOnIcon />}
                       label="Ubicación GPS"
@@ -1542,7 +1458,7 @@ export default function EmpresasPage() {
                       }}
                     />
                   )}
-                  {selectedEmpresa.policies?.requiereAudio && (
+                  {selectedEmpresa.policies?.requiredAudio && (
                     <Chip
                       icon={<MicIcon />}
                       label="Audio"
@@ -1566,7 +1482,7 @@ export default function EmpresasPage() {
                     Litros máximo por carga
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    {selectedEmpresa.policies?.litrosMaximoPorCarga} L
+                    {selectedEmpresa.policies?.maxLitrosThreshold} L
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -1574,7 +1490,7 @@ export default function EmpresasPage() {
                     Precio combustible
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    ${selectedEmpresa.policies?.precioCombustible}/L
+                    ${selectedEmpresa.policies?.fuelPrice}/L
                   </Typography>
                 </Box>
               </Card>
@@ -1657,7 +1573,7 @@ export default function EmpresasPage() {
       {/* Create/Edit Dialog */}
       <Dialog
         open={openDialog}
-        onClose={() => setOpenDialog(false)}
+        onClose={() => !isSaving && setOpenDialog(false)}
         maxWidth="md"
         fullWidth
         PaperProps={{
@@ -1763,16 +1679,16 @@ export default function EmpresasPage() {
             >
               <Box>
                 <TextField
-                  label="Slug (identificador único)"
-                  value={formData.slug}
+                  label="Subdomain (identificador único)"
+                  value={formData.subdomain}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      slug: e.target.value.toLowerCase(),
+                      subdomain: e.target.value.toLowerCase(),
                     })
                   }
-                  error={!!errors.slug}
-                  helperText={errors.slug || "Ejemplo: transportes-sur"}
+                  error={!!errors.subdomain}
+                  helperText={errors.subdomain || "Ejemplo: transportes-sur"}
                   required
                   disabled={!!editingEmpresa}
                   fullWidth
@@ -1789,12 +1705,12 @@ export default function EmpresasPage() {
               <Box>
                 <TextField
                   label="Nombre de la Empresa"
-                  value={formData.name}
+                  value={formData.nombre}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, nombre: e.target.value })
                   }
-                  error={!!errors.name}
-                  helperText={errors.name}
+                  error={!!errors.nombre}
+                  helperText={errors.nombre}
                   required
                   fullWidth
                   InputProps={{
@@ -1809,14 +1725,11 @@ export default function EmpresasPage() {
               </Box>
               <Box>
                 <TextField
-                  label="Dominio"
-                  value={formData.domain}
+                  label="Razón Social"
+                  value={formData.razonSocial}
                   onChange={(e) =>
-                    setFormData({ ...formData, domain: e.target.value })
+                    setFormData({ ...formData, razonSocial: e.target.value })
                   }
-                  error={!!errors.domain}
-                  helperText={errors.domain}
-                  required
                   fullWidth
                   InputProps={{
                     startAdornment: (
@@ -1852,10 +1765,10 @@ export default function EmpresasPage() {
               </Box>
               <Box>
                 <TextField
-                  label="Teléfono Admin"
-                  value={formData.adminPhone}
+                  label="Teléfono"
+                  value={formData.telefono}
                   onChange={(e) =>
-                    setFormData({ ...formData, adminPhone: e.target.value })
+                    setFormData({ ...formData, telefono: e.target.value })
                   }
                   fullWidth
                   placeholder="+54 11 1234-5678"
@@ -1866,11 +1779,11 @@ export default function EmpresasPage() {
                 <TextField
                   select
                   label="Plan"
-                  value={formData.plan}
+                  value={formData.subscriptionPlan}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      plan: e.target.value as
+                      subscriptionPlan: e.target.value as
                         | "basic"
                         | "professional"
                         | "enterprise",
@@ -1931,8 +1844,7 @@ export default function EmpresasPage() {
               color={theme.textSecondary}
               sx={{ mb: 3 }}
             >
-              Personaliza los colores del tema para esta empresa. Estos colores
-              se aplicarán en el dashboard del tenant.
+              Personaliza los colores del tema para esta empresa.
             </Typography>
             <Box
               sx={{
@@ -2080,7 +1992,7 @@ export default function EmpresasPage() {
               sx={{ mb: 3 }}
             >
               Configura las políticas de captura de datos para los eventos de
-              carga de combustible vía WhatsApp.
+              carga de combustible.
             </Typography>
 
             <Typography
@@ -2150,36 +2062,6 @@ export default function EmpresasPage() {
                       />
                       <Typography variant="body2">
                         Foto del odómetro/horómetro
-                      </Typography>
-                    </Box>
-                  }
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formData.policies.requiereFotoCuentaLitros}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          policies: {
-                            ...formData.policies,
-                            requiereFotoCuentaLitros: e.target.checked,
-                          },
-                        })
-                      }
-                      sx={{
-                        color: theme.primary,
-                        "&.Mui-checked": { color: theme.success },
-                      }}
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <PropaneTankIcon
-                        sx={{ fontSize: 20, color: theme.textSecondary }}
-                      />
-                      <Typography variant="body2">
-                        Foto del cuenta-litros
                       </Typography>
                     </Box>
                   }
@@ -2286,7 +2168,7 @@ export default function EmpresasPage() {
                 />
               </Box>
               <TextField
-                label="Precio por litro (USD)"
+                label="Precio por litro (ARS)"
                 type="number"
                 value={formData.policies.precioCombustible}
                 onChange={(e) =>
@@ -2385,6 +2267,7 @@ export default function EmpresasPage() {
         >
           <Button
             onClick={() => setOpenDialog(false)}
+            disabled={isSaving}
             sx={{
               color: theme.textSecondary,
               fontWeight: 600,
@@ -2397,6 +2280,7 @@ export default function EmpresasPage() {
           <Button
             variant="contained"
             onClick={handleSave}
+            disabled={isSaving}
             sx={{
               bgcolor: theme.primary,
               color: theme.surface,
@@ -2409,7 +2293,16 @@ export default function EmpresasPage() {
               },
             }}
           >
-            {editingEmpresa ? "Guardar Cambios" : "Crear Empresa"}
+            {isSaving ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CircularProgress size={18} color="inherit" />
+                <span>Guardando...</span>
+              </Box>
+            ) : editingEmpresa ? (
+              "Guardar Cambios"
+            ) : (
+              "Crear Empresa"
+            )}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2417,7 +2310,7 @@ export default function EmpresasPage() {
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !isDeleting && setOpenDeleteDialog(false)}
         PaperProps={{
           sx: {
             borderRadius: 4,
@@ -2451,7 +2344,7 @@ export default function EmpresasPage() {
           <Typography sx={{ color: theme.textSecondary, mb: 2 }}>
             ¿Estás seguro de eliminar la empresa{" "}
             <Box component="span" fontWeight={700} color={theme.textPrimary}>
-              {deleteEmpresa?.name}
+              {deleteEmpresa?.nombre}
             </Box>
             ?
           </Typography>
@@ -2473,6 +2366,7 @@ export default function EmpresasPage() {
         <DialogActions sx={{ p: 3, gap: 1.5, justifyContent: "center" }}>
           <Button
             onClick={() => setOpenDeleteDialog(false)}
+            disabled={isDeleting}
             sx={{
               color: theme.textSecondary,
               fontWeight: 600,
@@ -2485,6 +2379,7 @@ export default function EmpresasPage() {
           <Button
             variant="contained"
             onClick={handleDelete}
+            disabled={isDeleting}
             sx={{
               bgcolor: theme.error,
               color: theme.surface,
@@ -2494,7 +2389,14 @@ export default function EmpresasPage() {
               "&:hover": { bgcolor: "#DC2626" },
             }}
           >
-            Eliminar Empresa
+            {isDeleting ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CircularProgress size={18} color="inherit" />
+                <span>Eliminando...</span>
+              </Box>
+            ) : (
+              "Eliminar Empresa"
+            )}
           </Button>
         </DialogActions>
       </Dialog>

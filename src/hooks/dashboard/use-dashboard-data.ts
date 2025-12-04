@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/providers/auth/_A/AdminAuthProvider";
+import { useAuthStore } from "@/stores/auth.store";
+
 type PeriodoType = "semana" | "mes" | "trimestre" | "anio";
 
 interface ConsumoMensualData {
@@ -39,14 +40,14 @@ const mockConsumoPorTipo: ConsumoPorTipoData[] = [
 ];
 
 const mockKPIs: KPIData[] = [
-    { label: "Consumo Total", value: "32,450 L", change: "+12%", trend: "up", color: "#1E2C56" },
-    { label: "Costo Total", value: "$48,675", change: "+8%", trend: "up", color: "#10b981" },
-    { label: "Vehículos Activos", value: "24", change: "+2", trend: "up", color: "#4A90E2" },
-    { label: "Alertas Pendientes", value: "3", change: "-5", trend: "down", color: "#f59e0b" },
+  { label: "Consumo Total", value: "32,450 L", change: "+12%", trend: "up", color: "#1E2C56" },
+  { label: "Costo Total", value: "$48,675", change: "+8%", trend: "up", color: "#10b981" },
+  { label: "Vehículos Activos", value: "24", change: "+2", trend: "up", color: "#4A90E2" },
+  { label: "Alertas Pendientes", value: "3", change: "-5", trend: "down", color: "#f59e0b" },
 ];
 
 export function useDashboardData() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [data, setData] = useState({
     consumoMensual: [] as ConsumoMensualData[],
     consumoPorTipo: [] as ConsumoPorTipoData[],
@@ -58,16 +59,16 @@ export function useDashboardData() {
   useEffect(() => {
     // Si no hay usuario o tenant, no cargamos nada
     if (!user) {
-        setIsLoading(false);
-        return;
+      setIsLoading(false);
+      return;
     }
-    
+
     const loadData = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800)); 
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       // Lógica futura: Filtrar datos por user.empresaId si no es SuperAdmin
-      console.log(`Cargando dashboard para Empresa ID: ${user.empresaId} / Rol: ${user.rol}`);
+      console.log(`Cargando dashboard para Empresa ID: ${user.empresaId} / Rol: ${user.role}`);
 
       // Devolvemos los datos mockeados
       setData({
@@ -79,7 +80,7 @@ export function useDashboardData() {
     };
 
     loadData();
-  }, [periodo, user]); 
+  }, [periodo, user]);
 
   return {
     ...data,

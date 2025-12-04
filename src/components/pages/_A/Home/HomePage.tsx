@@ -1,6 +1,11 @@
 // src/components/pages/_A/Home/HomePage.tsx
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useEmpresas,
+  useEmpresasResumen,
+  empresasKeys,
+} from "@/hooks/queries/useEmpresas";
 import {
   Box,
   Typography,
@@ -28,6 +33,7 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import type { EmpresaResumen } from "@/types";
 
 // Theme colors
 const theme = {
@@ -45,32 +51,7 @@ const theme = {
   info: "#3B82F6",
 };
 
-// Interfaces
-interface GlobalStats {
-  empresasActivas: number;
-  empresasInactivas: number;
-  totalUsuarios: number;
-  totalVehiculos: number;
-  eventosHoy: number;
-  litrosHoy: number;
-  tendenciaEventos: number;
-  eventosMes: number;
-  eventosValidados: number;
-  eventosPendientes: number;
-  costoMes: number;
-  litrosMes: number;
-}
-
-interface EmpresaResumen {
-  id: number;
-  nombre: string;
-  color: string;
-  eventosHoy: number;
-  litrosHoy: number;
-  usuarios: number;
-  activa: boolean;
-}
-
+// Mock data for activities (hasta que exista un servicio de actividad)
 interface ActividadReciente {
   id: number;
   tipo: "evento" | "empresa" | "alerta";
@@ -79,61 +60,6 @@ interface ActividadReciente {
   empresa?: string;
   empresaColor?: string;
 }
-
-// Mock data
-const mockStats: GlobalStats = {
-  empresasActivas: 12,
-  empresasInactivas: 3,
-  totalUsuarios: 245,
-  totalVehiculos: 156,
-  eventosHoy: 89,
-  litrosHoy: 4520,
-  tendenciaEventos: 12.5,
-  eventosMes: 2456,
-  eventosValidados: 2180,
-  eventosPendientes: 276,
-  costoMes: 125680.5,
-  litrosMes: 98450,
-};
-
-const mockEmpresas: EmpresaResumen[] = [
-  {
-    id: 1,
-    nombre: "Transportes del Norte",
-    color: "#3B82F6",
-    eventosHoy: 24,
-    litrosHoy: 1250,
-    usuarios: 45,
-    activa: true,
-  },
-  {
-    id: 2,
-    nombre: "Logística Express",
-    color: "#10B981",
-    eventosHoy: 18,
-    litrosHoy: 980,
-    usuarios: 32,
-    activa: true,
-  },
-  {
-    id: 3,
-    nombre: "Flota Comercial SA",
-    color: "#8B5CF6",
-    eventosHoy: 15,
-    litrosHoy: 720,
-    usuarios: 28,
-    activa: true,
-  },
-  {
-    id: 4,
-    nombre: "Distribuidora Central",
-    color: "#F59E0B",
-    eventosHoy: 12,
-    litrosHoy: 650,
-    usuarios: 22,
-    activa: true,
-  },
-];
 
 const mockActividad: ActividadReciente[] = [
   {
@@ -179,7 +105,7 @@ const mockActividad: ActividadReciente[] = [
 // Utility functions
 const formatNumber = (num: number) => num.toLocaleString("es-MX");
 const formatCurrency = (num: number) =>
-  `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+  `$${num.toLocaleString("es-MX", { minimumFractionDigits: 0 })}`;
 
 // KPI Card Component
 function KPICard({
@@ -297,8 +223,8 @@ function EmpresaMiniCard({
         cursor: "pointer",
         transition: "all 0.3s ease",
         "&:hover": {
-          borderColor: empresa.color,
-          boxShadow: `0 4px 15px ${alpha(empresa.color, 0.2)}`,
+          borderColor: empresa.primaryColor,
+          boxShadow: `0 4px 15px ${alpha(empresa.primaryColor, 0.2)}`,
           transform: "translateY(-2px)",
         },
       }}
@@ -309,7 +235,7 @@ function EmpresaMiniCard({
             sx={{
               width: 44,
               height: 44,
-              bgcolor: empresa.color,
+              bgcolor: empresa.primaryColor,
               fontWeight: 700,
               fontSize: 16,
             }}
@@ -377,31 +303,41 @@ function EmpresaMiniCard({
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [empresas, setEmpresas] = useState<EmpresaResumen[]>([]);
-  const [actividad, setActividad] = useState<ActividadReciente[]>([]);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // React Query hooks
+  const { data: empresasData, isLoading: isLoadingEmpresas } = useEmpresas();
+  const { data: resumenData, isLoading: isLoadingResumen } =
+    useEmpresasResumen();
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setStats(mockStats);
-      setEmpresas(mockEmpresas);
-      setActividad(mockActividad);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
+  const loading = isLoadingEmpresas || isLoadingResumen;
+
+  // Computed stats from empresas
+  const empresas = empresasData?.data || [];
+  const resumen = resumenData?.data || [];
+
+  const stats = {
+    empresasActivas: empresas.filter((e) => e.activo).length,
+    empresasInactivas: empresas.filter((e) => !e.activo).length,
+    totalUsuarios: resumen.reduce((acc, e) => acc + (e.usuarios || 0), 0),
+    totalVehiculos: resumen.reduce((acc, e) => acc + (e.vehiculos || 0), 0),
+    eventosHoy: resumen.reduce((acc, e) => acc + (e.eventosHoy || 0), 0),
+    litrosHoy: resumen.reduce((acc, e) => acc + (e.litrosHoy || 0), 0),
+    tendenciaEventos: 12.5, // Mock - puede venir del backend
+    eventosMes: 2456, // Mock
+    eventosValidados: 2180, // Mock
+    eventosPendientes: 276, // Mock
+    costoMes: 125680.5, // Mock
+    litrosMes: 98450, // Mock
   };
 
+  // Top empresas ordenadas por eventos
+  const topEmpresas = [...resumen]
+    .sort((a, b) => b.eventosHoy - a.eventosHoy)
+    .slice(0, 4);
+
   const handleRefresh = () => {
-    loadData();
+    queryClient.invalidateQueries({ queryKey: empresasKeys.all });
   };
 
   const handleEmpresaClick = () => {
@@ -506,15 +442,15 @@ export default function HomePage() {
       >
         <KPICard
           title="Empresas Activas"
-          value={stats?.empresasActivas || 0}
-          subtitle={`${stats?.empresasInactivas || 0} inactivas`}
+          value={stats.empresasActivas}
+          subtitle={`${stats.empresasInactivas} inactivas`}
           icon={<BusinessIcon />}
           color={theme.primary}
           loading={loading}
         />
         <KPICard
           title="Usuarios Totales"
-          value={formatNumber(stats?.totalUsuarios || 0)}
+          value={formatNumber(stats.totalUsuarios)}
           subtitle="En todo el sistema"
           icon={<PeopleIcon />}
           color={theme.info}
@@ -522,7 +458,7 @@ export default function HomePage() {
         />
         <KPICard
           title="Vehículos Registrados"
-          value={formatNumber(stats?.totalVehiculos || 0)}
+          value={formatNumber(stats.totalVehiculos)}
           subtitle="Activos en el sistema"
           icon={<DirectionsCarIcon />}
           color={theme.warning}
@@ -530,11 +466,11 @@ export default function HomePage() {
         />
         <KPICard
           title="Eventos Hoy"
-          value={formatNumber(stats?.eventosHoy || 0)}
-          subtitle={`${formatNumber(stats?.litrosHoy || 0)} litros`}
+          value={formatNumber(stats.eventosHoy)}
+          subtitle={`${formatNumber(stats.litrosHoy)} litros`}
           icon={<LocalGasStationIcon />}
           color={theme.success}
-          trend={stats?.tendenciaEventos}
+          trend={stats.tendenciaEventos}
           loading={loading}
         />
       </Box>
@@ -571,7 +507,7 @@ export default function HomePage() {
               {loading ? (
                 <Skeleton width={100} />
               ) : (
-                formatNumber(stats?.eventosMes || 0)
+                formatNumber(stats.eventosMes)
               )}
             </Typography>
             <Box sx={{ mt: 2 }}>
@@ -586,14 +522,14 @@ export default function HomePage() {
                   fontWeight={700}
                   color={theme.success}
                 >
-                  {stats?.eventosValidados || 0}
+                  {stats.eventosValidados}
                 </Typography>
               </Box>
               <LinearProgress
                 variant="determinate"
                 value={
-                  stats?.eventosMes
-                    ? ((stats?.eventosValidados || 0) / stats.eventosMes) * 100
+                  stats.eventosMes
+                    ? (stats.eventosValidados / stats.eventosMes) * 100
                     : 0
                 }
                 sx={{
@@ -626,11 +562,7 @@ export default function HomePage() {
               </Typography>
             </Box>
             <Typography variant="h3" fontWeight={800} color={theme.warning}>
-              {loading ? (
-                <Skeleton width={80} />
-              ) : (
-                stats?.eventosPendientes || 0
-              )}
+              {loading ? <Skeleton width={80} /> : stats.eventosPendientes}
             </Typography>
             <Typography
               variant="body2"
@@ -662,7 +594,7 @@ export default function HomePage() {
               {loading ? (
                 <Skeleton width={120} />
               ) : (
-                formatCurrency(stats?.costoMes || 0)
+                formatCurrency(stats.costoMes)
               )}
             </Typography>
             <Typography
@@ -670,7 +602,7 @@ export default function HomePage() {
               color={theme.textSecondary}
               sx={{ mt: 1 }}
             >
-              {formatNumber(stats?.litrosMes || 0)} litros consumidos
+              {formatNumber(stats.litrosMes)} litros consumidos
             </Typography>
           </CardContent>
         </Card>
@@ -743,7 +675,7 @@ export default function HomePage() {
                       sx={{ borderRadius: 3 }}
                     />
                   ))
-                : empresas.map((empresa) => (
+                : topEmpresas.map((empresa) => (
                     <EmpresaMiniCard
                       key={empresa.id}
                       empresa={empresa}
@@ -785,7 +717,7 @@ export default function HomePage() {
               ))
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {actividad.map((item) => (
+                {mockActividad.map((item) => (
                   <Box
                     key={item.id}
                     sx={{

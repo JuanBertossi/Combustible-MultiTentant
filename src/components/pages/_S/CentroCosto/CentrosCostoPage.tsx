@@ -26,8 +26,7 @@ import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 import * as XLSX from "xlsx";
 
 type TipoCentroCosto = "Lote" | "Obra" | "Area" | "Proyecto" | "Otro";
@@ -158,8 +157,8 @@ const getTipoColor = (tipo: TipoCentroCosto): string =>
   tipoColorMap[tipo] || tipoColorMap.Otro;
 
 export default function CentroCostoPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [items, setItems] = useState<CentroCosto[]>(mockCentrosCosto);
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);

@@ -25,8 +25,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import WarningIcon from "@mui/icons-material/Warning";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 import * as XLSX from "xlsx";
 
 const TIPOS_COMBUSTIBLE: string[] = ["Diésel", "Nafta", "GNC", "GLP"];
@@ -132,8 +131,8 @@ const getNivelColor = (percentage: number): "success" | "warning" | "error" => {
 };
 
 export default function TanquesPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [tanques, setTanques] = useState<TanqueExtended[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

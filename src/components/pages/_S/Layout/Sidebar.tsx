@@ -28,12 +28,11 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PropaneTankIcon from "@mui/icons-material/PropaneTank";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenant } from "../../../providers/tenants/tenant-provider";
+import { useAuthStore } from "@/stores/auth.store";
+import { useTenantStore } from "@/stores/tenant.store";
+import type { UserRole } from "@/types";
 
 const DRAWER_WIDTH = 260;
-
-type UserRole = "admin" | "superadmin";
 
 interface MenuItem {
   label: string;
@@ -48,7 +47,7 @@ const menuStructure: MenuItem[] = [
     label: "Dashboard",
     icon: <DashboardIcon />,
     path: "/s/dashboard",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin", "admin", "supervisor", "operador", "auditor"],
   },
   {
     label: "Administración",
@@ -78,38 +77,38 @@ const menuStructure: MenuItem[] = [
   {
     label: "Flota",
     icon: <LocalShippingIcon />,
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin", "admin", "supervisor"],
     submenu: [
       {
         label: "Vehículos",
         icon: <DirectionsCarIcon />,
         path: "/s/vehiculos",
-        roles: ["superadmin", "admin"],
+        roles: ["superadmin", "admin", "supervisor"],
       },
       {
         label: "Choferes",
         icon: <PersonIcon />,
         path: "/s/choferes",
-        roles: ["superadmin", "admin"],
+        roles: ["superadmin", "admin", "supervisor"],
       },
     ],
   },
   {
     label: "Combustible",
     icon: <LocalGasStationIcon />,
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin", "admin", "supervisor", "operador"],
     submenu: [
       {
         label: "Eventos",
         icon: <LocalGasStationIcon />,
         path: "/s/eventos",
-        roles: ["superadmin", "admin"],
+        roles: ["superadmin", "admin", "supervisor", "operador"],
       },
       {
         label: "Validación",
         icon: <CheckCircleIcon />,
         path: "/s/validacion",
-        roles: ["superadmin", "admin"],
+        roles: ["superadmin", "admin", "supervisor"],
       },
       {
         label: "Surtidores",
@@ -129,7 +128,7 @@ const menuStructure: MenuItem[] = [
     label: "Reportes",
     icon: <AssessmentIcon />,
     path: "/s/reportes",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin", "admin", "supervisor", "auditor"],
   },
   {
     label: "Configuración",
@@ -142,9 +141,9 @@ const menuStructure: MenuItem[] = [
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useTenantAuth();
-  const { tenant } = useTenant();
-  const name = tenant?.name;
+  const { hasRole } = useAuthStore();
+  const { tenantConfig } = useTenantStore();
+  const name = tenantConfig?.name;
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -161,7 +160,7 @@ export default function Sidebar() {
   };
 
   const hasAccess = (roles: UserRole[]) => {
-    return roles.includes(user?.role as UserRole);
+    return hasRole(roles);
   };
 
   return (
@@ -184,16 +183,20 @@ export default function Sidebar() {
       }}
     >
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <LocalGasStationIcon 
-          sx={{ 
-            fontSize: 40, 
-            color: "var(--accent-color)", 
+        <LocalGasStationIcon
+          sx={{
+            fontSize: 40,
+            color: "var(--accent-color)",
             mb: 1,
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
-          }} 
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+          }}
         />
 
-        <Typography variant="h6" fontWeight="bold" sx={{ color: "var(--sidebar-text)" }}>
+        <Typography
+          variant="h6"
+          fontWeight="bold"
+          sx={{ color: "var(--sidebar-text)" }}
+        >
           Gestión Combustibles
         </Typography>
 
@@ -227,15 +230,19 @@ export default function Sidebar() {
                       borderRadius: 2,
                       bgcolor: "transparent",
                       color: "var(--sidebar-text)",
-                      "&:hover": { 
+                      "&:hover": {
                         bgcolor: "rgba(255, 255, 255, 0.08)",
                         transform: "translateX(4px)",
-                        transition: "all 0.2s"
+                        transition: "all 0.2s",
                       },
                     }}
                   >
                     <ListItemIcon
-                      sx={{ color: "var(--sidebar-text)", minWidth: 40, opacity: 0.9 }}
+                      sx={{
+                        color: "var(--sidebar-text)",
+                        minWidth: 40,
+                        opacity: 0.9,
+                      }}
                     >
                       {item.icon}
                     </ListItemIcon>
@@ -249,7 +256,11 @@ export default function Sidebar() {
                   </ListItemButton>
                 </ListItem>
 
-                <Collapse in={openMenus[item.label]} timeout="auto" unmountOnExit>
+                <Collapse
+                  in={openMenus[item.label]}
+                  timeout="auto"
+                  unmountOnExit
+                >
                   <List component="div" disablePadding>
                     {filteredSubmenu.map((subItem) => (
                       <ListItem
@@ -265,15 +276,15 @@ export default function Sidebar() {
                               ? "rgba(255, 255, 255, 0.15)"
                               : "transparent",
                             color: "var(--sidebar-text)",
-                            borderLeft: isActive(subItem.path) 
-                              ? "3px solid var(--accent-color)" 
+                            borderLeft: isActive(subItem.path)
+                              ? "3px solid var(--accent-color)"
                               : "3px solid transparent",
                             "&:hover": {
                               bgcolor: isActive(subItem.path)
                                 ? "rgba(255, 255, 255, 0.2)"
                                 : "rgba(255, 255, 255, 0.08)",
                               transform: "translateX(4px)",
-                              transition: "all 0.2s"
+                              transition: "all 0.2s",
                             },
                           }}
                         >
@@ -311,19 +322,19 @@ export default function Sidebar() {
                 onClick={() => item.path && navigate(item.path)}
                 sx={{
                   borderRadius: 2,
-                  bgcolor: isActive(item.path) 
-                    ? "rgba(255, 255, 255, 0.15)" 
+                  bgcolor: isActive(item.path)
+                    ? "rgba(255, 255, 255, 0.15)"
                     : "transparent",
                   color: "var(--sidebar-text)",
-                  borderLeft: isActive(item.path) 
-                    ? "3px solid var(--accent-color)" 
+                  borderLeft: isActive(item.path)
+                    ? "3px solid var(--accent-color)"
                     : "3px solid transparent",
                   "&:hover": {
                     bgcolor: isActive(item.path)
                       ? "rgba(255, 255, 255, 0.2)"
                       : "rgba(255, 255, 255, 0.08)",
                     transform: "translateX(4px)",
-                    transition: "all 0.2s"
+                    transition: "all 0.2s",
                   },
                 }}
               >

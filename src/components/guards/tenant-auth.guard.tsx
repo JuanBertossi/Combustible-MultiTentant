@@ -1,16 +1,24 @@
 // src/components/guards/tenant-auth.guard.tsx
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
+import { useTenantStore } from "@/stores/tenant.store";
 import { Box, CircularProgress } from "@mui/material";
 
 interface TenantAuthGuardProps {
   children: ReactNode;
-  requireRole?: "admin" | "supervisor" | "operator" | "auditor";
+  requireRole?: "admin" | "supervisor" | "operador" | "auditor";
 }
 
-export function TenantAuthGuard({ children, requireRole }: TenantAuthGuardProps) {
-  const { user, isLoading, isAuthenticated } = useTenantAuth();
+export function TenantAuthGuard({
+  children,
+  requireRole,
+}: TenantAuthGuardProps) {
+  const { user, isLoading, isAuthenticated, checkAuth } = useTenantStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   if (isLoading) {
     return (
@@ -20,9 +28,10 @@ export function TenantAuthGuard({ children, requireRole }: TenantAuthGuardProps)
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
+          bgcolor: "#F4F8FA",
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: "#1E2C56" }} />
       </Box>
     );
   }

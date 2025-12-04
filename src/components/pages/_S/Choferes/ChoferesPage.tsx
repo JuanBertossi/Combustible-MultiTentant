@@ -27,8 +27,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantAuth } from "@/components/providers/auth/_S/TenantAuthProvider";
-import { useTenantContext } from "@/components/providers/tenants/use-tenant";
+import { useTenantStore } from "@/stores/tenant.store";
 import * as XLSX from "xlsx";
 
 interface Chofer {
@@ -133,8 +132,8 @@ const getInitials = (nombre: string, apellido: string): string => {
 };
 
 export default function ChoferesPage() {
-  const { user } = useTenantAuth();
-  const { name: tenantName } = useTenantContext();
+  const { user, tenantConfig } = useTenantStore();
+  const tenantName = tenantConfig?.name;
   const [choferes, setChoferes] = useState<Chofer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [openDialog, setOpenDialog] = useState<boolean>(false);

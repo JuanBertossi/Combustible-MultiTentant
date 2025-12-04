@@ -1,7 +1,8 @@
 // src/components/guards/admin-auth.guard.tsx
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { useAdminAuth } from "@/components/providers/auth/_A/AdminAuthProvider";
+import { useAuthStore } from "@/stores/auth.store";
 import { Box, CircularProgress } from "@mui/material";
 
 interface AdminAuthGuardProps {
@@ -10,17 +11,14 @@ interface AdminAuthGuardProps {
 }
 
 export function AdminAuthGuard({ children, requireRole }: AdminAuthGuardProps) {
-  const { user, isLoading, isAuthenticated } = useAdminAuth();
+  const { user, isLoading, isAuthenticated, checkAuth } = useAuthStore();
 
-  console.log("🛡️ AdminAuthGuard:", {
-    isLoading,
-    isAuthenticated,
-    user,
-    requireRole,
-  });
+  // Verificar autenticación al montar
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   if (isLoading) {
-    console.log("🛡️ AdminAuthGuard: Loading...");
     return (
       <Box
         sx={{
@@ -28,25 +26,21 @@ export function AdminAuthGuard({ children, requireRole }: AdminAuthGuardProps) {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
+          bgcolor: "#F8FAFB",
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: "#284057" }} />
       </Box>
     );
   }
 
   if (!isAuthenticated) {
-    console.log("🛡️ AdminAuthGuard: No autenticado, redirigiendo a login");
     return <Navigate to="/a/login" replace />;
   }
 
   if (requireRole && user?.role !== requireRole) {
-    console.log(
-      "🛡️ AdminAuthGuard: Rol incorrecto, redirigiendo a unauthorized"
-    );
     return <Navigate to="/unauthorized" replace />;
   }
 
-  console.log("🛡️ AdminAuthGuard: ✅ Acceso permitido");
   return <>{children}</>;
 }
