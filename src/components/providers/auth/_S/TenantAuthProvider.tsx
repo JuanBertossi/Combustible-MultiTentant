@@ -33,12 +33,11 @@ export function TenantAuthProvider({ children }: { children: ReactNode }) {
     const currentUser = authService.getCurrentUser();
     console.log("👤 Tenant usuario encontrado:", currentUser);
 
-    // en tenant NO aceptamos superadmin
+    // en tenant NO aceptamos superadmin, pero no cerramos sesión global
     if (currentUser && currentUser.role !== "superadmin") {
       setUser(currentUser);
-    } else {
-      authService.logout();
     }
+    // No llamamos logout aquí - solo no establecemos el usuario
     setIsLoading(false);
   }, []);
 
