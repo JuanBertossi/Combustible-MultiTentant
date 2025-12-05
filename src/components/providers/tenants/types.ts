@@ -1,6 +1,7 @@
 export interface TenantConfig {
-  domain: string;
+  domain?: string;
   name: string;
   theme: string;
   id?: number;
+  isDefault?: boolean;
 }

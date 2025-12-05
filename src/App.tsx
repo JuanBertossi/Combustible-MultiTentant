@@ -4,21 +4,21 @@ import { BrowserRouter } from "react-router-dom";
 import "./App.css";
 import { ThemeProvider } from "./components/providers/theme/theme-provider";
 import { Toaster } from "./components/ui/sonner";
-import { Routing } from "./routes/routes";
+import { Routing } from "../src/components/pages/_S/routes";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/auth.store";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutos
+      staleTime: 1000 * 60 * 5,
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// Componente que verifica la autenticación al iniciar
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const { checkAuth, isLoading } = useAuthStore();
 
@@ -26,9 +26,8 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  // Opcional: mostrar loading mientras verifica
   if (isLoading) {
-    return null; // O un spinner global
+    return null;
   }
 
   return <>{children}</>;

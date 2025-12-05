@@ -52,6 +52,7 @@ export default function Header() {
 
   const handleLogout = () => {
     logout();
+    handleClose();
     navigate("/s/login");
   };
 
