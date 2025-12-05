@@ -58,7 +58,14 @@ import { ESTADOS_CHOFER, TIPOS_LICENCIA } from "@/types";
 
 // Colores para avatares
 const getAvatarColor = (nombre: string): string => {
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+  const colors = [
+    "#3b82f6",
+    "#10b981",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#06b6d4",
+  ];
   return colors[nombre.charCodeAt(0) % colors.length];
 };
 
@@ -79,6 +86,8 @@ const getInitialFormData = (): ChoferFormData => ({
   licenciaVencimiento: "",
   estado: "activo",
   vehiculoAsignadoId: undefined,
+  unidadId: undefined,
+  observaciones: "",
   activo: true,
 });
 
@@ -103,14 +112,21 @@ export default function ChoferesPage() {
   const [deleteChofer, setDeleteChofer] = useState<Chofer | null>(null);
 
   // Formulario
-  const [formData, setFormData] = useState<ChoferFormData>(getInitialFormData());
+  const [formData, setFormData] = useState<ChoferFormData>(
+    getInitialFormData()
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   // React Query hooks
-  const { data: choferesData, isLoading, error } = useChoferes({
+  const {
+    data: choferesData,
+    isLoading,
+    error,
+  } = useChoferes({
     search: searchTerm || undefined,
-    estado: filterEstado !== "todos" ? (filterEstado as EstadoChofer) : undefined,
+    estado:
+      filterEstado !== "todos" ? (filterEstado as EstadoChofer) : undefined,
   });
 
   // Vehículos disponibles para asignar
@@ -191,7 +207,10 @@ export default function ChoferesPage() {
     } else if (!/^\d{7,8}$/.test(formData.dni)) {
       newErrors.dni = "DNI inválido (7-8 dígitos)";
     }
-    if (formData.whatsappNumber && !/^\+?\d{10,15}$/.test(formData.whatsappNumber.replace(/\s/g, ""))) {
+    if (
+      formData.whatsappNumber &&
+      !/^\+?\d{10,15}$/.test(formData.whatsappNumber.replace(/\s/g, ""))
+    ) {
       newErrors.whatsappNumber = "Formato inválido (ej: +5493512345678)";
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -237,18 +256,26 @@ export default function ChoferesPage() {
       Nombre: c.nombre,
       Apellido: c.apellido,
       DNI: c.dni,
-      "Teléfono": c.telefono || "",
+      Teléfono: c.telefono || "",
       WhatsApp: c.whatsappNumber || "",
       Email: c.email || "",
-      "Tipo Licencia": c.licenciaTipo ? TIPOS_LICENCIA.find((t) => t.value === c.licenciaTipo)?.label : "",
-      Estado: ESTADOS_CHOFER.find((e) => e.value === c.estado)?.label || c.estado,
-      ...(user?.role === "admin" && { "Unidad de Negocio": c.unidadNombre || "Sin asignar" }),
+      "Tipo Licencia": c.licenciaTipo
+        ? TIPOS_LICENCIA.find((t) => t.value === c.licenciaTipo)?.label
+        : "",
+      Estado:
+        ESTADOS_CHOFER.find((e) => e.value === c.estado)?.label || c.estado,
+      ...(user?.role === "admin" && {
+        "Unidad de Negocio": c.unidadNombre || "Sin asignar",
+      }),
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Choferes");
-    XLSX.writeFile(wb, `Choferes_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Choferes_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
     toast.success("Archivo exportado correctamente");
   };
 
@@ -292,11 +319,15 @@ export default function ChoferesPage() {
         }}
       >
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+          >
             Gestión de Choferes
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {choferes.length} {choferes.length === 1 ? "chofer" : "choferes"} registrados
+            {choferes.length} {choferes.length === 1 ? "chofer" : "choferes"}{" "}
+            registrados
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -400,7 +431,14 @@ export default function ChoferesPage() {
                 },
               }}
             >
-              <CardContent sx={{ p: 2.5, flex: 1, display: "flex", flexDirection: "column" }}>
+              <CardContent
+                sx={{
+                  p: 2.5,
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {/* Header con avatar */}
                 <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                   <Box
@@ -423,7 +461,9 @@ export default function ChoferesPage() {
                     <Typography variant="subtitle1" fontWeight={700}>
                       {chofer.nombre} {chofer.apellido}
                     </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
                       <BadgeIcon sx={{ fontSize: 14, color: "#6b7280" }} />
                       <Typography variant="body2" color="text.secondary">
                         {chofer.dni}
@@ -434,17 +474,36 @@ export default function ChoferesPage() {
 
                 {/* Info de contacto */}
                 {chofer.whatsappNumber && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      mb: 1,
+                    }}
+                  >
                     <PhoneAndroidIcon sx={{ fontSize: 16, color: "#10b981" }} />
-                    <Typography variant="body2">{chofer.whatsappNumber}</Typography>
+                    <Typography variant="body2">
+                      {chofer.whatsappNumber}
+                    </Typography>
                   </Box>
                 )}
 
                 {/* Licencia */}
                 {chofer.licenciaTipo && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      mb: 1,
+                    }}
+                  >
                     <Typography variant="caption" color="text.secondary">
-                      Licencia: {TIPOS_LICENCIA.find((t) => t.value === chofer.licenciaTipo)?.label || chofer.licenciaTipo}
+                      Licencia:{" "}
+                      {TIPOS_LICENCIA.find(
+                        (t) => t.value === chofer.licenciaTipo
+                      )?.label || chofer.licenciaTipo}
                     </Typography>
                   </Box>
                 )}
@@ -454,7 +513,11 @@ export default function ChoferesPage() {
                   <Box sx={{ mb: 1.5 }}>
                     <Chip
                       icon={<DirectionsCarIcon sx={{ fontSize: 16 }} />}
-                      label={vehiculos.find((v) => v.id === chofer.vehiculoAsignadoId)?.patente || "Vehículo asignado"}
+                      label={
+                        vehiculos.find(
+                          (v) => v.id === chofer.vehiculoAsignadoId
+                        )?.patente || "Vehículo asignado"
+                      }
                       size="small"
                       sx={{ bgcolor: "#3b82f615", color: "#3b82f6" }}
                     />
@@ -464,10 +527,14 @@ export default function ChoferesPage() {
                 {/* Chips de estado */}
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
                   <Chip
-                    label={ESTADOS_CHOFER.find((e) => e.value === chofer.estado)?.label || chofer.estado}
+                    label={
+                      ESTADOS_CHOFER.find((e) => e.value === chofer.estado)
+                        ?.label || chofer.estado
+                    }
                     size="small"
                     sx={{
-                      bgcolor: chofer.estado === "activo" ? "#10b98115" : "#f59e0b15",
+                      bgcolor:
+                        chofer.estado === "activo" ? "#10b98115" : "#f59e0b15",
                       color: chofer.estado === "activo" ? "#10b981" : "#f59e0b",
                       fontWeight: 600,
                     }}
@@ -476,7 +543,11 @@ export default function ChoferesPage() {
 
                 {/* Unidad de negocio (solo admin) */}
                 {user?.role === "admin" && chofer.unidadNombre && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
                     📍 {chofer.unidadNombre}
                   </Typography>
                 )}
@@ -521,26 +592,37 @@ export default function ChoferesPage() {
             No hay choferes registrados
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {canManage ? "Haz clic en 'Nuevo Chofer' para agregar uno" : "No tienes choferes asignados"}
+            {canManage
+              ? "Haz clic en 'Nuevo Chofer' para agregar uno"
+              : "No tienes choferes asignados"}
           </Typography>
         </Box>
       )}
 
       {/* Diálogo de crear/editar */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>
           {editingChofer ? "Editar Chofer" : "Nuevo Chofer"}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", gap: 3, pt: 2 }}>
             {/* Formulario */}
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box
+              sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}
+            >
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <TextField
                     label="Nombre"
                     value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nombre: e.target.value })
+                    }
                     error={!!errors.nombre}
                     helperText={errors.nombre}
                     required
@@ -551,7 +633,9 @@ export default function ChoferesPage() {
                   <TextField
                     label="Apellido"
                     value={formData.apellido}
-                    onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, apellido: e.target.value })
+                    }
                     error={!!errors.apellido}
                     helperText={errors.apellido}
                     required
@@ -562,7 +646,9 @@ export default function ChoferesPage() {
                   <TextField
                     label="DNI"
                     value={formData.dni}
-                    onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dni: e.target.value })
+                    }
                     error={!!errors.dni}
                     helperText={errors.dni}
                     required
@@ -573,7 +659,9 @@ export default function ChoferesPage() {
                   <TextField
                     label="Teléfono"
                     value={formData.telefono || ""}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, telefono: e.target.value })
+                    }
                     fullWidth
                   />
                 </Grid>
@@ -581,9 +669,16 @@ export default function ChoferesPage() {
                   <TextField
                     label="WhatsApp"
                     value={formData.whatsappNumber || ""}
-                    onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        whatsappNumber: e.target.value,
+                      })
+                    }
                     error={!!errors.whatsappNumber}
-                    helperText={errors.whatsappNumber || "Formato: +54 9 351 234 5678"}
+                    helperText={
+                      errors.whatsappNumber || "Formato: +54 9 351 234 5678"
+                    }
                     placeholder="+54 9 11 1234-5678"
                     fullWidth
                     InputProps={{
@@ -600,7 +695,9 @@ export default function ChoferesPage() {
                     label="Email"
                     type="email"
                     value={formData.email || ""}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     error={!!errors.email}
                     helperText={errors.email}
                     fullWidth
@@ -611,7 +708,13 @@ export default function ChoferesPage() {
                     select
                     label="Tipo de Licencia"
                     value={formData.licenciaTipo || ""}
-                    onChange={(e) => setFormData({ ...formData, licenciaTipo: e.target.value as TipoLicencia || undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        licenciaTipo:
+                          (e.target.value as TipoLicencia) || undefined,
+                      })
+                    }
                     fullWidth
                   >
                     <MenuItem value="">Sin especificar</MenuItem>
@@ -627,7 +730,12 @@ export default function ChoferesPage() {
                     label="Vencimiento Licencia"
                     type="date"
                     value={formData.licenciaVencimiento || ""}
-                    onChange={(e) => setFormData({ ...formData, licenciaVencimiento: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        licenciaVencimiento: e.target.value,
+                      })
+                    }
                     fullWidth
                     InputLabelProps={{ shrink: true }}
                   />
@@ -637,7 +745,12 @@ export default function ChoferesPage() {
                     select
                     label="Estado"
                     value={formData.estado}
-                    onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoChofer })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        estado: e.target.value as EstadoChofer,
+                      })
+                    }
                     fullWidth
                   >
                     {ESTADOS_CHOFER.map((estado) => (
@@ -652,7 +765,14 @@ export default function ChoferesPage() {
                     select
                     label="Vehículo Asignado"
                     value={formData.vehiculoAsignadoId || ""}
-                    onChange={(e) => setFormData({ ...formData, vehiculoAsignadoId: e.target.value as number || undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        vehiculoAsignadoId: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
                     fullWidth
                   >
                     <MenuItem value="">Sin asignar</MenuItem>
@@ -671,7 +791,14 @@ export default function ChoferesPage() {
                       <InputLabel>Unidad de Negocio</InputLabel>
                       <Select
                         value={formData.unidadId || ""}
-                        onChange={(e) => setFormData({ ...formData, unidadId: e.target.value as number || undefined })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            unidadId: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
                         label="Unidad de Negocio"
                       >
                         <MenuItem value="">Sin asignar</MenuItem>
@@ -689,7 +816,12 @@ export default function ChoferesPage() {
                   <TextField
                     label="Observaciones"
                     value={formData.observaciones || ""}
-                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        observaciones: e.target.value,
+                      })
+                    }
                     multiline
                     rows={2}
                     fullWidth
@@ -715,7 +847,9 @@ export default function ChoferesPage() {
                 "&:hover": { bgcolor: "#d1fae5" },
               }}
             >
-              <input {...(getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)} />
+              <input
+                {...(getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
+              />
               {imageFile ? (
                 <img
                   src={URL.createObjectURL(imageFile)}
@@ -756,11 +890,18 @@ export default function ChoferesPage() {
       </Dialog>
 
       {/* Confirmación de eliminación */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de eliminar al chofer <strong>{deleteChofer?.nombre} {deleteChofer?.apellido}</strong>?
+            ¿Estás seguro de eliminar al chofer{" "}
+            <strong>
+              {deleteChofer?.nombre} {deleteChofer?.apellido}
+            </strong>
+            ?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Esta acción no se puede deshacer.
@@ -781,4 +922,3 @@ export default function ChoferesPage() {
     </Box>
   );
 }
-

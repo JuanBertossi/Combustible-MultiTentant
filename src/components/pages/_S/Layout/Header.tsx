@@ -187,7 +187,7 @@ export default function Header() {
                 <Select
                   value={unidadActiva?.id ?? "all"}
                   onChange={(e) =>
-                    handleUnidadChange(e.target.value as number | "all")
+                    handleUnidadChange(e.target.value === "all" ? "all" : Number(e.target.value))
                   }
                   IconComponent={KeyboardArrowDownIcon}
                   sx={{

@@ -874,7 +874,7 @@ export default function UsuariosPage() {
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        unidadId: e.target.value as number,
+                        unidadId: e.target.value ? Number(e.target.value) : undefined,
                       })
                     }
                     disabled={isSupervisor && unidadesDisponibles.length === 1}

@@ -69,11 +69,14 @@ const getInitialFormData = (): SurtidorFormData => ({
   codigo: "",
   tipo: "fijo",
   ubicacion: "",
+  latitud: undefined,
+  longitud: undefined,
   capacidad: undefined,
   stockActual: undefined,
   estado: "activo",
   proveedor: "",
   observaciones: "",
+  unidadId: undefined,
   activo: true,
 });
 
@@ -99,14 +102,21 @@ export default function SurtidoresPage() {
   const [deleteSurtidor, setDeleteSurtidor] = useState<Surtidor | null>(null);
 
   // Formulario
-  const [formData, setFormData] = useState<SurtidorFormData>(getInitialFormData());
+  const [formData, setFormData] = useState<SurtidorFormData>(
+    getInitialFormData()
+  );
   const [errors, setErrors] = useState<FormErrors>({});
 
   // React Query hooks
-  const { data: surtidoresData, isLoading, error } = useSurtidores({
+  const {
+    data: surtidoresData,
+    isLoading,
+    error,
+  } = useSurtidores({
     search: searchTerm || undefined,
     tipo: filterTipo !== "todos" ? (filterTipo as TipoSurtidor) : undefined,
-    estado: filterEstado !== "todos" ? (filterEstado as EstadoSurtidor) : undefined,
+    estado:
+      filterEstado !== "todos" ? (filterEstado as EstadoSurtidor) : undefined,
   });
 
   const createMutation = useCreateSurtidor();
@@ -207,15 +217,21 @@ export default function SurtidoresPage() {
       Ubicación: s.ubicacion,
       "Capacidad (L)": s.capacidad || "",
       "Stock Actual (L)": s.stockActual || "",
-      Estado: ESTADOS_SURTIDOR.find((e) => e.value === s.estado)?.label || s.estado,
+      Estado:
+        ESTADOS_SURTIDOR.find((e) => e.value === s.estado)?.label || s.estado,
       Proveedor: s.proveedor || "",
-      ...(user?.role === "admin" && { "Unidad de Negocio": s.unidadNombre || "Sin asignar" }),
+      ...(user?.role === "admin" && {
+        "Unidad de Negocio": s.unidadNombre || "Sin asignar",
+      }),
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Surtidores");
-    XLSX.writeFile(wb, `Surtidores_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Surtidores_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
     toast.success("Archivo exportado correctamente");
   };
 
@@ -259,11 +275,15 @@ export default function SurtidoresPage() {
         }}
       >
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+          >
             Gestión de Surtidores
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {surtidores.length} {surtidores.length === 1 ? "surtidor" : "surtidores"} registrados
+            {surtidores.length}{" "}
+            {surtidores.length === 1 ? "surtidor" : "surtidores"} registrados
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -382,9 +402,23 @@ export default function SurtidoresPage() {
                 },
               }}
             >
-              <CardContent sx={{ p: 2.5, flex: 1, display: "flex", flexDirection: "column" }}>
+              <CardContent
+                sx={{
+                  p: 2.5,
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {/* Header */}
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    mb: 2,
+                  }}
+                >
                   <Box
                     sx={{
                       width: 48,
@@ -400,7 +434,10 @@ export default function SurtidoresPage() {
                     <LocalGasStationIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Chip
-                    label={TIPOS_SURTIDOR.find((t) => t.value === surtidor.tipo)?.label || surtidor.tipo}
+                    label={
+                      TIPOS_SURTIDOR.find((t) => t.value === surtidor.tipo)
+                        ?.label || surtidor.tipo
+                    }
                     size="small"
                     sx={{
                       bgcolor: `${getColorByTipo(surtidor.tipo)}15`,
@@ -414,12 +451,23 @@ export default function SurtidoresPage() {
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
                   {surtidor.codigo || surtidor.nombre}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1.5 }}
+                >
                   {surtidor.codigo ? surtidor.nombre : ""}
                 </Typography>
 
                 {/* Ubicación */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    mb: 1.5,
+                  }}
+                >
                   <LocationOnIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
                   <Typography variant="caption" color="text.secondary">
                     {surtidor.ubicacion}
@@ -430,7 +478,9 @@ export default function SurtidoresPage() {
                 {(surtidor.capacidad || surtidor.stockActual) && (
                   <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                     {surtidor.capacidad && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
                         <SpeedIcon sx={{ fontSize: 14, color: "#6b7280" }} />
                         <Typography variant="caption" color="text.secondary">
                           Cap: {surtidor.capacidad.toLocaleString()}L
@@ -448,11 +498,18 @@ export default function SurtidoresPage() {
                 {/* Estado */}
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
                   <Chip
-                    label={ESTADOS_SURTIDOR.find((e) => e.value === surtidor.estado)?.label || surtidor.estado}
+                    label={
+                      ESTADOS_SURTIDOR.find((e) => e.value === surtidor.estado)
+                        ?.label || surtidor.estado
+                    }
                     size="small"
                     sx={{
-                      bgcolor: surtidor.estado === "activo" ? "#10b98115" : "#f59e0b15",
-                      color: surtidor.estado === "activo" ? "#10b981" : "#f59e0b",
+                      bgcolor:
+                        surtidor.estado === "activo"
+                          ? "#10b98115"
+                          : "#f59e0b15",
+                      color:
+                        surtidor.estado === "activo" ? "#10b981" : "#f59e0b",
                       fontWeight: 600,
                     }}
                   />
@@ -460,7 +517,11 @@ export default function SurtidoresPage() {
 
                 {/* Unidad (solo admin) */}
                 {user?.role === "admin" && surtidor.unidadNombre && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
                     📍 {surtidor.unidadNombre}
                   </Typography>
                 )}
@@ -505,13 +566,20 @@ export default function SurtidoresPage() {
             No hay surtidores registrados
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {canManage ? "Haz clic en 'Nuevo Surtidor' para agregar uno" : "No tienes surtidores asignados"}
+            {canManage
+              ? "Haz clic en 'Nuevo Surtidor' para agregar uno"
+              : "No tienes surtidores asignados"}
           </Typography>
         </Box>
       )}
 
       {/* Diálogo de crear/editar */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           {editingSurtidor ? "Editar Surtidor" : "Nuevo Surtidor"}
         </DialogTitle>
@@ -522,7 +590,12 @@ export default function SurtidoresPage() {
                 <TextField
                   label="Código"
                   value={formData.codigo || ""}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      codigo: e.target.value.toUpperCase(),
+                    })
+                  }
                   placeholder="SUR-001"
                   fullWidth
                 />
@@ -532,7 +605,12 @@ export default function SurtidoresPage() {
                   select
                   label="Tipo"
                   value={formData.tipo}
-                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoSurtidor })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      tipo: e.target.value as TipoSurtidor,
+                    })
+                  }
                   error={!!errors.tipo}
                   helperText={errors.tipo}
                   required
@@ -549,7 +627,9 @@ export default function SurtidoresPage() {
                 <TextField
                   label="Nombre"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
                   error={!!errors.nombre}
                   helperText={errors.nombre}
                   required
@@ -561,7 +641,9 @@ export default function SurtidoresPage() {
                 <TextField
                   label="Ubicación"
                   value={formData.ubicacion}
-                  onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ubicacion: e.target.value })
+                  }
                   error={!!errors.ubicacion}
                   helperText={errors.ubicacion}
                   required
@@ -574,7 +656,12 @@ export default function SurtidoresPage() {
                   label="Capacidad (Litros)"
                   type="number"
                   value={formData.capacidad || ""}
-                  onChange={(e) => setFormData({ ...formData, capacidad: parseFloat(e.target.value) || undefined })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      capacidad: parseFloat(e.target.value) || undefined,
+                    })
+                  }
                   fullWidth
                 />
               </Grid>
@@ -583,7 +670,12 @@ export default function SurtidoresPage() {
                   label="Stock Actual (Litros)"
                   type="number"
                   value={formData.stockActual || ""}
-                  onChange={(e) => setFormData({ ...formData, stockActual: parseFloat(e.target.value) || undefined })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stockActual: parseFloat(e.target.value) || undefined,
+                    })
+                  }
                   fullWidth
                 />
               </Grid>
@@ -592,7 +684,12 @@ export default function SurtidoresPage() {
                   select
                   label="Estado"
                   value={formData.estado}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoSurtidor })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      estado: e.target.value as EstadoSurtidor,
+                    })
+                  }
                   fullWidth
                 >
                   {ESTADOS_SURTIDOR.map((estado) => (
@@ -606,7 +703,9 @@ export default function SurtidoresPage() {
                 <TextField
                   label="Proveedor"
                   value={formData.proveedor || ""}
-                  onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, proveedor: e.target.value })
+                  }
                   fullWidth
                 />
               </Grid>
@@ -618,7 +717,14 @@ export default function SurtidoresPage() {
                     <InputLabel>Unidad de Negocio</InputLabel>
                     <Select
                       value={formData.unidadId || ""}
-                      onChange={(e) => setFormData({ ...formData, unidadId: e.target.value as number || undefined })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          unidadId: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
                       label="Unidad de Negocio"
                     >
                       <MenuItem value="">Sin asignar</MenuItem>
@@ -636,7 +742,9 @@ export default function SurtidoresPage() {
                 <TextField
                   label="Observaciones"
                   value={formData.observaciones || ""}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, observaciones: e.target.value })
+                  }
                   multiline
                   rows={2}
                   fullWidth
@@ -663,11 +771,15 @@ export default function SurtidoresPage() {
       </Dialog>
 
       {/* Confirmación de eliminación */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de eliminar el surtidor <strong>{deleteSurtidor?.codigo || deleteSurtidor?.nombre}</strong>?
+            ¿Estás seguro de eliminar el surtidor{" "}
+            <strong>{deleteSurtidor?.codigo || deleteSurtidor?.nombre}</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Esta acción no se puede deshacer.

@@ -79,9 +79,12 @@ const getInitialFormData = (): TanqueFormData => ({
   stockActual: 0,
   stockMinimo: 0,
   ubicacion: "",
+  latitud: undefined,
+  longitud: undefined,
   estado: "operativo",
   proveedor: "",
   observaciones: "",
+  unidadId: undefined,
   activo: true,
 });
 
@@ -701,7 +704,7 @@ export default function TanquesPage() {
                     <InputLabel>Unidad de Negocio</InputLabel>
                     <Select
                       value={formData.unidadId || ""}
-                      onChange={(e) => setFormData({ ...formData, unidadId: e.target.value as number || undefined })}
+                      onChange={(e) => setFormData({ ...formData, unidadId: e.target.value ? Number(e.target.value) : undefined })}
                       label="Unidad de Negocio"
                     >
                       <MenuItem value="">Sin asignar</MenuItem>
