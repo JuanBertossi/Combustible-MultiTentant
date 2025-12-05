@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+// src/components/pages/_S/Surtidores/SurtidoresPage.tsx
+import { useState, useMemo } from "react";
 import {
   Box,
   Button,
@@ -16,6 +17,11 @@ import {
   Chip,
   IconButton,
   LinearProgress,
+  Alert,
+  Skeleton,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -24,201 +30,151 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantStore } from "@/stores/tenant.store";
+import SpeedIcon from "@mui/icons-material/Speed";
 import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
-const TIPOS_COMBUSTIBLE: string[] = ["Diésel", "Nafta", "GNC", "GLP"];
+// Hooks y stores
+import { useTenantStore } from "@/stores/tenant.store";
+import { useUnidadStore } from "@/stores/unidad.store";
+import {
+  useSurtidores,
+  useCreateSurtidor,
+  useUpdateSurtidor,
+  useDeleteSurtidor,
+} from "@/hooks/queries";
 
-interface SurtidorExtended {
-  id: number;
-  codigo?: string;
-  nombre: string;
-  ubicacion?: string;
-  tipoCombustible?: string;
-  activo: boolean;
-  empresaId: number;
-  empresa?: string;
-  empresaNombre?: string;
-}
+// Types
+import type {
+  Surtidor,
+  SurtidorFormData,
+  TipoSurtidor,
+  EstadoSurtidor,
+} from "@/types";
+import { TIPOS_SURTIDOR, ESTADOS_SURTIDOR } from "@/types";
 
-interface SurtidorFormData {
-  codigo: string;
-  nombre: string;
-  ubicacion: string;
-  tipoCombustible: string;
-  activo: boolean;
-}
+// Colores por tipo de surtidor
+const getColorByTipo = (tipo: TipoSurtidor): string => {
+  const colors: Record<TipoSurtidor, string> = {
+    fijo: "#10b981",
+    movil: "#3b82f6",
+    tanque_propio: "#f59e0b",
+  };
+  return colors[tipo] || "#667eea";
+};
+
+// Estado inicial del formulario
+const getInitialFormData = (): SurtidorFormData => ({
+  nombre: "",
+  codigo: "",
+  tipo: "fijo",
+  ubicacion: "",
+  latitud: undefined,
+  longitud: undefined,
+  capacidad: undefined,
+  stockActual: undefined,
+  estado: "activo",
+  proveedor: "",
+  observaciones: "",
+  unidadId: undefined,
+  activo: true,
+});
 
 interface FormErrors {
   [key: string]: string;
 }
 
-// Mock data
-const mockSurtidores: SurtidorExtended[] = [
-  {
-    id: 1,
-    codigo: "SUR-001",
-    nombre: "Surtidor Principal Diésel",
-    ubicacion: "Estación Central",
-    tipoCombustible: "Diésel",
-    activo: true,
-    empresaId: 1,
-    empresa: "Empresa A",
-  },
-  {
-    id: 2,
-    codigo: "SUR-002",
-    nombre: "Surtidor Nafta Norte",
-    ubicacion: "Zona Norte - Lote 12",
-    tipoCombustible: "Nafta",
-    activo: true,
-    empresaId: 1,
-    empresa: "Empresa A",
-  },
-  {
-    id: 3,
-    codigo: "SUR-003",
-    nombre: "Surtidor GNC Sur",
-    ubicacion: "Zona Sur - Depósito",
-    tipoCombustible: "GNC",
-    activo: false,
-    empresaId: 2,
-    empresa: "Empresa B",
-  },
-  {
-    id: 4,
-    codigo: "SUR-004",
-    nombre: "Surtidor GLP Este",
-    ubicacion: "Zona Este - Campo 5",
-    tipoCombustible: "GLP",
-    activo: true,
-    empresaId: 1,
-    empresa: "Empresa A",
-  },
-];
-
-const getColorByTipo = (tipo: string): string => {
-  const colors: Record<string, string> = {
-    Diésel: "#10b981",
-    Nafta: "#3b82f6",
-    GNC: "#f59e0b",
-    GLP: "#8b5cf6",
-  };
-  return colors[tipo] ?? "#667eea";
-};
-
 export default function SurtidoresPage() {
-  const { user, tenantConfig } = useTenantStore();
-  const tenantName = tenantConfig?.name;
-  const [surtidores, setSurtidores] = useState<SurtidorExtended[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [openDialog, setOpenDialog] = useState<boolean>(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
-  const [editingSurtidor, setEditingSurtidor] =
-    useState<SurtidorExtended | null>(null);
-  const [deleteSurtidor, setDeleteSurtidor] = useState<SurtidorExtended | null>(
-    null
+  // Stores
+  const { user, hasPermission } = useTenantStore();
+  const { unidades } = useUnidadStore();
+  const canManage = hasPermission("surtidores:gestionar");
+
+  // Estados locales
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterTipo, setFilterTipo] = useState<string>("todos");
+  const [filterEstado, setFilterEstado] = useState<string>("todos");
+
+  // Diálogos
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [editingSurtidor, setEditingSurtidor] = useState<Surtidor | null>(null);
+  const [deleteSurtidor, setDeleteSurtidor] = useState<Surtidor | null>(null);
+
+  // Formulario
+  const [formData, setFormData] = useState<SurtidorFormData>(
+    getInitialFormData()
   );
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterTipo, setFilterTipo] = useState<string>("Todos");
-  const [formData, setFormData] = useState<SurtidorFormData>({
-    codigo: "",
-    nombre: "",
-    ubicacion: "",
-    tipoCombustible: "Diésel",
-    activo: true,
-  });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // ✅ Todos los hooks antes del early return
-  useEffect(() => {
-    const loadSurtidores = async () => {
-      setLoading(true);
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setSurtidores(mockSurtidores);
-      } catch (error) {
-        console.error("Error loading surtidores:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSurtidores();
-  }, []);
-
-  // ✅ Early return después de todos los hooks
-  if (loading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <LinearProgress />
-        <Typography sx={{ mt: 2 }}>Cargando surtidores...</Typography>
-      </Box>
-    );
-  }
-
-  const filteredSurtidores = surtidores.filter((s) => {
-    const matchSearch =
-      (s.codigo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.ubicacion || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchTipo =
-      filterTipo === "Todos" || s.tipoCombustible === filterTipo;
-    return matchSearch && matchTipo;
+  // React Query hooks
+  const {
+    data: surtidoresData,
+    isLoading,
+    error,
+  } = useSurtidores({
+    search: searchTerm || undefined,
+    tipo: filterTipo !== "todos" ? (filterTipo as TipoSurtidor) : undefined,
+    estado:
+      filterEstado !== "todos" ? (filterEstado as EstadoSurtidor) : undefined,
   });
 
-  const handleExport = (): void => {
-    const dataToExport = filteredSurtidores.map((s) => ({
-      Código: s.codigo || "",
-      Nombre: s.nombre,
-      Ubicación: s.ubicacion || "",
-      "Tipo Combustible": s.tipoCombustible || "",
-      Estado: s.activo ? "Activo" : "Inactivo",
-      ...(user?.role === "admin" && { Empresa: s.empresa || s.empresaNombre }),
-    }));
+  const createMutation = useCreateSurtidor();
+  const updateMutation = useUpdateSurtidor();
+  const deleteMutation = useDeleteSurtidor();
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Surtidores");
-    XLSX.writeFile(
-      wb,
-      `Surtidores_${new Date().toISOString().split("T")[0]}.xlsx`
-    );
-  };
+  // Surtidores filtrados
+  const surtidores = useMemo(() => {
+    return surtidoresData?.data || [];
+  }, [surtidoresData]);
 
-  const handleNew = (): void => {
+  // Handlers
+  const handleNew = () => {
     setEditingSurtidor(null);
-    setFormData({
-      codigo: "",
-      nombre: "",
-      ubicacion: "",
-      tipoCombustible: "Diésel",
-      activo: true,
-    });
+    setFormData(getInitialFormData());
     setErrors({});
     setOpenDialog(true);
   };
 
-  const handleEdit = (surtidor: SurtidorExtended): void => {
+  const handleEdit = (surtidor: Surtidor) => {
     setEditingSurtidor(surtidor);
     setFormData({
-      codigo: surtidor.codigo || "",
       nombre: surtidor.nombre,
-      ubicacion: surtidor.ubicacion || "",
-      tipoCombustible: surtidor.tipoCombustible || "Diésel",
+      codigo: surtidor.codigo || "",
+      tipo: surtidor.tipo,
+      ubicacion: surtidor.ubicacion,
+      latitud: surtidor.latitud,
+      longitud: surtidor.longitud,
+      capacidad: surtidor.capacidad,
+      stockActual: surtidor.stockActual,
+      estado: surtidor.estado,
+      proveedor: surtidor.proveedor || "",
+      observaciones: surtidor.observaciones || "",
+      unidadId: surtidor.unidadId,
       activo: surtidor.activo,
     });
     setErrors({});
     setOpenDialog(true);
   };
 
+  const handleDeleteClick = (surtidor: Surtidor) => {
+    setDeleteSurtidor(surtidor);
+    setOpenDeleteDialog(true);
+  };
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-    if (!formData.codigo.trim()) newErrors.codigo = "El código es obligatorio";
-    if (!formData.nombre.trim()) newErrors.nombre = "El nombre es obligatorio";
-    if (!formData.ubicacion.trim())
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es obligatorio";
+    }
+    if (!formData.ubicacion.trim()) {
       newErrors.ubicacion = "La ubicación es obligatoria";
-    if (!formData.tipoCombustible)
-      newErrors.tipoCombustible = "El tipo de combustible es obligatorio";
+    }
+    if (!formData.tipo) {
+      newErrors.tipo = "El tipo es obligatorio";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -228,47 +184,86 @@ export default function SurtidoresPage() {
 
     try {
       if (editingSurtidor) {
-        setSurtidores(
-          surtidores.map((s) =>
-            s.id === editingSurtidor.id
-              ? { ...editingSurtidor, ...formData }
-              : s
-          )
-        );
+        await updateMutation.mutateAsync({
+          id: editingSurtidor.id,
+          data: formData,
+        });
       } else {
-        const newSurtidor: SurtidorExtended = {
-          id: Math.max(...surtidores.map((s) => s.id), 0) + 1,
-          ...formData,
-          empresaId: 1,
-          empresa: tenantName,
-        };
-        setSurtidores([...surtidores, newSurtidor]);
+        await createMutation.mutateAsync(formData);
       }
       setOpenDialog(false);
     } catch (error) {
-      console.error("Error saving surtidor:", error);
+      // Error manejado por el mutation
     }
-  };
-
-  const handleDeleteClick = (surtidor: SurtidorExtended): void => {
-    setDeleteSurtidor(surtidor);
-    setOpenDeleteDialog(true);
   };
 
   const handleDelete = async () => {
-    if (deleteSurtidor) {
-      try {
-        setSurtidores(surtidores.filter((s) => s.id !== deleteSurtidor.id));
-      } catch (error) {
-        console.error("Error deleting surtidor:", error);
-      }
+    if (!deleteSurtidor) return;
+
+    try {
+      await deleteMutation.mutateAsync(deleteSurtidor.id);
+      setOpenDeleteDialog(false);
+      setDeleteSurtidor(null);
+    } catch (error) {
+      // Error manejado por el mutation
     }
-    setOpenDeleteDialog(false);
-    setDeleteSurtidor(null);
   };
 
+  const handleExport = () => {
+    const dataToExport = surtidores.map((s) => ({
+      Código: s.codigo || "",
+      Nombre: s.nombre,
+      Tipo: TIPOS_SURTIDOR.find((t) => t.value === s.tipo)?.label || s.tipo,
+      Ubicación: s.ubicacion,
+      "Capacidad (L)": s.capacidad || "",
+      "Stock Actual (L)": s.stockActual || "",
+      Estado:
+        ESTADOS_SURTIDOR.find((e) => e.value === s.estado)?.label || s.estado,
+      Proveedor: s.proveedor || "",
+      ...(user?.role === "admin" && {
+        "Unidad de Negocio": s.unidadNombre || "Sin asignar",
+      }),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Surtidores");
+    XLSX.writeFile(
+      wb,
+      `Surtidores_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
+    toast.success("Archivo exportado correctamente");
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <LinearProgress sx={{ mb: 2 }} />
+        <Grid container spacing={3}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
+              <Skeleton variant="rounded" height={200} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Error al cargar surtidores: {error.message}
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ p: 3, mt: -3 }}>
+    <Box sx={{ p: 3 }}>
       {/* Header */}
       <Box
         sx={{
@@ -276,18 +271,27 @@ export default function SurtidoresPage() {
           justifyContent: "space-between",
           alignItems: "center",
           mb: 1.5,
+          mt: -3,
         }}
       >
-        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
-          Gestión de Surtidores • {filteredSurtidores.length}{" "}
-          {filteredSurtidores.length === 1 ? "surtidor" : "surtidores"}
-        </Typography>
+        <Box>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+          >
+            Gestión de Surtidores
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {surtidores.length}{" "}
+            {surtidores.length === 1 ? "surtidor" : "surtidores"} registrados
+          </Typography>
+        </Box>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<FileDownloadIcon />}
             onClick={handleExport}
-            disabled={filteredSurtidores.length === 0}
+            disabled={surtidores.length === 0}
             sx={{
               borderColor: "#10b981",
               color: "#10b981",
@@ -298,19 +302,21 @@ export default function SurtidoresPage() {
           >
             Exportar
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNew}
-            sx={{
-              bgcolor: "#1E2C56",
-              fontWeight: 600,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#16213E" },
-            }}
-          >
-            Nuevo Surtidor
-          </Button>
+          {canManage && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleNew}
+              sx={{
+                bgcolor: "#1E2C56",
+                fontWeight: 600,
+                textTransform: "none",
+                "&:hover": { bgcolor: "#16213E" },
+              }}
+            >
+              Nuevo Surtidor
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -342,18 +348,35 @@ export default function SurtidoresPage() {
             ),
           }}
         />
+
         <TextField
           select
           size="small"
           label="Tipo"
           value={filterTipo}
           onChange={(e) => setFilterTipo(e.target.value)}
-          sx={{ minWidth: 180 }}
+          sx={{ minWidth: 160 }}
         >
-          <MenuItem value="Todos">Todos los tipos</MenuItem>
-          {TIPOS_COMBUSTIBLE.map((tipo) => (
-            <MenuItem key={tipo} value={tipo}>
-              {tipo}
+          <MenuItem value="todos">Todos los tipos</MenuItem>
+          {TIPOS_SURTIDOR.map((tipo) => (
+            <MenuItem key={tipo.value} value={tipo.value}>
+              {tipo.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          size="small"
+          label="Estado"
+          value={filterEstado}
+          onChange={(e) => setFilterEstado(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="todos">Todos los estados</MenuItem>
+          {ESTADOS_SURTIDOR.map((estado) => (
+            <MenuItem key={estado.value} value={estado.value}>
+              {estado.label}
             </MenuItem>
           ))}
         </TextField>
@@ -361,7 +384,7 @@ export default function SurtidoresPage() {
 
       {/* Grid de surtidores */}
       <Grid container spacing={3}>
-        {filteredSurtidores.map((surtidor) => (
+        {surtidores.map((surtidor) => (
           <Grid item xs={12} sm={6} md={4} lg={3} key={surtidor.id}>
             <Card
               elevation={0}
@@ -369,15 +392,25 @@ export default function SurtidoresPage() {
                 border: "1px solid #e2e8f0",
                 borderRadius: 3,
                 height: "100%",
+                display: "flex",
+                flexDirection: "column",
                 transition: "all 0.25s ease",
                 "&:hover": {
                   boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
                   transform: "translateY(-3px)",
-                  borderColor: getColorByTipo(surtidor.tipoCombustible || ""),
+                  borderColor: getColorByTipo(surtidor.tipo),
                 },
               }}
             >
-              <CardContent sx={{ p: 2.5 }}>
+              <CardContent
+                sx={{
+                  p: 2.5,
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {/* Header */}
                 <Box
                   sx={{
                     display: "flex",
@@ -391,10 +424,8 @@ export default function SurtidoresPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 2,
-                      bgcolor: `${getColorByTipo(
-                        surtidor.tipoCombustible || ""
-                      )}15`,
-                      color: getColorByTipo(surtidor.tipoCombustible || ""),
+                      bgcolor: `${getColorByTipo(surtidor.tipo)}15`,
+                      color: getColorByTipo(surtidor.tipo),
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -403,35 +434,38 @@ export default function SurtidoresPage() {
                     <LocalGasStationIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Chip
-                    label={surtidor.tipoCombustible}
+                    label={
+                      TIPOS_SURTIDOR.find((t) => t.value === surtidor.tipo)
+                        ?.label || surtidor.tipo
+                    }
                     size="small"
                     sx={{
-                      bgcolor: `${getColorByTipo(
-                        surtidor.tipoCombustible || ""
-                      )}15`,
-                      color: getColorByTipo(surtidor.tipoCombustible || ""),
+                      bgcolor: `${getColorByTipo(surtidor.tipo)}15`,
+                      color: getColorByTipo(surtidor.tipo),
                       fontWeight: 600,
                     }}
                   />
                 </Box>
 
+                {/* Info principal */}
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                  {surtidor.codigo}
+                  {surtidor.codigo || surtidor.nombre}
                 </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ mb: 1.5 }}
                 >
-                  {surtidor.nombre}
+                  {surtidor.codigo ? surtidor.nombre : ""}
                 </Typography>
 
+                {/* Ubicación */}
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     gap: 0.5,
-                    mb: 2,
+                    mb: 1.5,
                   }}
                 >
                   <LocationOnIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
@@ -440,66 +474,106 @@ export default function SurtidoresPage() {
                   </Typography>
                 </Box>
 
-                <Chip
-                  label={surtidor.activo ? "Activo" : "Inactivo"}
-                  size="small"
-                  sx={{
-                    bgcolor: surtidor.activo ? "#10b98115" : "#99999915",
-                    color: surtidor.activo ? "#10b981" : "#999",
-                    fontWeight: 600,
-                    mb: 2,
-                  }}
-                />
+                {/* Stats */}
+                {(surtidor.capacidad || surtidor.stockActual) && (
+                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                    {surtidor.capacidad && (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        <SpeedIcon sx={{ fontSize: 14, color: "#6b7280" }} />
+                        <Typography variant="caption" color="text.secondary">
+                          Cap: {surtidor.capacidad.toLocaleString()}L
+                        </Typography>
+                      </Box>
+                    )}
+                    {surtidor.stockActual !== undefined && (
+                      <Typography variant="caption" color="text.secondary">
+                        Stock: {surtidor.stockActual.toLocaleString()}L
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
-                {user?.role === "admin" && (
+                {/* Estado */}
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                  <Chip
+                    label={
+                      ESTADOS_SURTIDOR.find((e) => e.value === surtidor.estado)
+                        ?.label || surtidor.estado
+                    }
+                    size="small"
+                    sx={{
+                      bgcolor:
+                        surtidor.estado === "activo"
+                          ? "#10b98115"
+                          : "#f59e0b15",
+                      color:
+                        surtidor.estado === "activo" ? "#10b981" : "#f59e0b",
+                      fontWeight: 600,
+                    }}
+                  />
+                </Box>
+
+                {/* Unidad (solo admin) */}
+                {user?.role === "admin" && surtidor.unidadNombre && (
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ display: "block", mb: 2 }}
+                    sx={{ mb: 1 }}
                   >
-                    Empresa: {surtidor.empresa}
+                    📍 {surtidor.unidadNombre}
                   </Typography>
                 )}
 
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEdit(surtidor)}
-                    sx={{
-                      bgcolor: "#f3f4f6",
-                      "&:hover": { bgcolor: "#e5e7eb" },
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(surtidor)}
-                    sx={{
-                      bgcolor: "#fee2e2",
-                      color: "#dc2626",
-                      "&:hover": { bgcolor: "#fecaca" },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
+                {/* Acciones */}
+                {canManage && (
+                  <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(surtidor)}
+                      sx={{
+                        bgcolor: "#f3f4f6",
+                        "&:hover": { bgcolor: "#e5e7eb" },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(surtidor)}
+                      sx={{
+                        bgcolor: "#fee2e2",
+                        color: "#dc2626",
+                        "&:hover": { bgcolor: "#fecaca" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      {filteredSurtidores.length === 0 && (
+      {/* Empty state */}
+      {surtidores.length === 0 && (
         <Box sx={{ textAlign: "center", py: 8 }}>
           <LocalGasStationIcon sx={{ fontSize: 64, color: "#ddd", mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
             No hay surtidores registrados
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {canManage
+              ? "Haz clic en 'Nuevo Surtidor' para agregar uno"
+              : "No tienes surtidores asignados"}
+          </Typography>
         </Box>
       )}
 
-      {/* Diálogo crear/editar */}
+      {/* Diálogo de crear/editar */}
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
@@ -511,90 +585,215 @@ export default function SurtidoresPage() {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-            <TextField
-              label="Código"
-              value={formData.codigo}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  codigo: e.target.value.toUpperCase(),
-                })
-              }
-              error={!!errors.codigo}
-              helperText={errors.codigo}
-              required
-              placeholder="SUR-001"
-              fullWidth
-            />
-            <TextField
-              select
-              label="Tipo de Combustible"
-              value={formData.tipoCombustible}
-              onChange={(e) =>
-                setFormData({ ...formData, tipoCombustible: e.target.value })
-              }
-              error={!!errors.tipoCombustible}
-              helperText={errors.tipoCombustible}
-              required
-              fullWidth
-            >
-              {TIPOS_COMBUSTIBLE.map((tipo) => (
-                <MenuItem key={tipo} value={tipo}>
-                  {tipo}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Nombre"
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData({ ...formData, nombre: e.target.value })
-              }
-              error={!!errors.nombre}
-              helperText={errors.nombre}
-              required
-              placeholder="Surtidor Principal"
-              fullWidth
-            />
-            <TextField
-              label="Ubicación"
-              value={formData.ubicacion}
-              onChange={(e) =>
-                setFormData({ ...formData, ubicacion: e.target.value })
-              }
-              error={!!errors.ubicacion}
-              helperText={errors.ubicacion}
-              required
-              placeholder="Estación Central, Lote 45, etc."
-              fullWidth
-            />
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <TextField
+                  label="Código"
+                  value={formData.codigo || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      codigo: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="SUR-001"
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  select
+                  label="Tipo"
+                  value={formData.tipo}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      tipo: e.target.value as TipoSurtidor,
+                    })
+                  }
+                  error={!!errors.tipo}
+                  helperText={errors.tipo}
+                  required
+                  fullWidth
+                >
+                  {TIPOS_SURTIDOR.map((tipo) => (
+                    <MenuItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Nombre"
+                  value={formData.nombre}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
+                  error={!!errors.nombre}
+                  helperText={errors.nombre}
+                  required
+                  placeholder="Surtidor Principal"
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Ubicación"
+                  value={formData.ubicacion}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ubicacion: e.target.value })
+                  }
+                  error={!!errors.ubicacion}
+                  helperText={errors.ubicacion}
+                  required
+                  placeholder="Estación Central, Lote 45, etc."
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  label="Capacidad (Litros)"
+                  type="number"
+                  value={formData.capacidad || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      capacidad: parseFloat(e.target.value) || undefined,
+                    })
+                  }
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  label="Stock Actual (Litros)"
+                  type="number"
+                  value={formData.stockActual || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stockActual: parseFloat(e.target.value) || undefined,
+                    })
+                  }
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  select
+                  label="Estado"
+                  value={formData.estado}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      estado: e.target.value as EstadoSurtidor,
+                    })
+                  }
+                  fullWidth
+                >
+                  {ESTADOS_SURTIDOR.map((estado) => (
+                    <MenuItem key={estado.value} value={estado.value}>
+                      {estado.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  label="Proveedor"
+                  value={formData.proveedor || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, proveedor: e.target.value })
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Selector de unidad (solo admin) */}
+              {user?.role === "admin" && unidades.length > 0 && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Unidad de Negocio</InputLabel>
+                    <Select
+                      value={formData.unidadId || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          unidadId: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      label="Unidad de Negocio"
+                    >
+                      <MenuItem value="">Sin asignar</MenuItem>
+                      {unidades.map((unidad) => (
+                        <MenuItem key={unidad.id} value={unidad.id}>
+                          {unidad.nombre}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              <Grid item xs={12}>
+                <TextField
+                  label="Observaciones"
+                  value={formData.observaciones || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, observaciones: e.target.value })
+                  }
+                  multiline
+                  rows={2}
+                  fullWidth
+                />
+              </Grid>
+            </Grid>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>
-            {editingSurtidor ? "Guardar Cambios" : "Crear Surtidor"}
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={createMutation.isPending || updateMutation.isPending}
+            sx={{ bgcolor: "#1E2C56", "&:hover": { bgcolor: "#16213E" } }}
+          >
+            {createMutation.isPending || updateMutation.isPending
+              ? "Guardando..."
+              : editingSurtidor
+              ? "Guardar Cambios"
+              : "Crear Surtidor"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Diálogo eliminar */}
+      {/* Confirmación de eliminación */}
       <Dialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}
       >
-        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
             ¿Estás seguro de eliminar el surtidor{" "}
-            <strong>{deleteSurtidor?.codigo}</strong> -{" "}
-            <strong>{deleteSurtidor?.nombre}</strong>?
+            <strong>{deleteSurtidor?.codigo || deleteSurtidor?.nombre}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            Eliminar
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
           </Button>
         </DialogActions>
       </Dialog>
