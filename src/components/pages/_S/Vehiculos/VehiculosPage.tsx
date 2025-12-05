@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+// src/components/pages/_S/Vehiculos/VehiculosPage.tsx
+import { useState, useMemo } from "react";
 import {
   Box,
   Button,
@@ -16,6 +17,11 @@ import {
   Chip,
   IconButton,
   LinearProgress,
+  Alert,
+  Skeleton,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import { useDropzone } from "react-dropzone";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,141 +30,110 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { useTenantStore } from "@/stores/tenant.store";
+import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+import SpeedIcon from "@mui/icons-material/Speed";
 import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
-type TipoVehiculo =
-  | "Camión"
-  | "Tractor"
-  | "Sembradora"
-  | "Cosechadora"
-  | "Pulverizadora"
-  | "Pick-up"
-  | "Generador"
-  | "Otro";
+// Hooks y stores
+import { useTenantStore } from "@/stores/tenant.store";
+import { useUnidadStore } from "@/stores/unidad.store";
+import {
+  useVehiculos,
+  useCreateVehiculo,
+  useUpdateVehiculo,
+  useDeleteVehiculo,
+} from "@/hooks/queries";
 
-interface Vehiculo {
-  id: number;
-  patente: string;
-  tipo: TipoVehiculo;
-  marca?: string;
-  modelo?: string;
-  anio?: number;
-  activo: boolean;
-  empresaId: number;
-  empresaNombre?: string;
-}
+// Types
+import type {
+  VehiculoConStats,
+  VehiculoFormData,
+  TipoVehiculo,
+  TipoCombustible,
+  EstadoVehiculo,
+} from "@/types";
+import {
+  TIPOS_VEHICULO,
+  TIPOS_COMBUSTIBLE,
+  ESTADOS_VEHICULO,
+} from "@/types";
 
-interface VehiculoFormData {
-  patente: string;
-  tipo: TipoVehiculo;
-  marca: string;
-  modelo: string;
-  anio: number;
-  capacidad: string | number;
-  activo: boolean;
-}
+// Colores por tipo de vehículo
+const getColorByTipo = (tipo: TipoVehiculo): string => {
+  const colors: Record<TipoVehiculo, string> = {
+    camion: "#3b82f6",
+    tractor: "#10b981",
+    sembradora: "#f59e0b",
+    cosechadora: "#8b5cf6",
+    pulverizadora: "#ec4899",
+    pickup: "#06b6d4",
+    automovil: "#6366f1",
+    utilitario: "#14b8a6",
+    maquinaria: "#f97316",
+    otro: "#667eea",
+  };
+  return colors[tipo] || "#667eea";
+};
+
+// Estado inicial del formulario
+const getInitialFormData = (): VehiculoFormData => ({
+  patente: "",
+  marca: "",
+  modelo: "",
+  anio: new Date().getFullYear(),
+  tipo: "camion",
+  tipoCombustible: "diesel",
+  capacidadTanque: 0,
+  kmActual: 0,
+  horasActual: 0,
+  estado: "activo",
+  activo: true,
+});
 
 interface FormErrors {
   [key: string]: string;
 }
 
-const TIPOS_VEHICULO: TipoVehiculo[] = [
-  "Camión",
-  "Tractor",
-  "Sembradora",
-  "Cosechadora",
-  "Pulverizadora",
-  "Pick-up",
-  "Generador",
-  "Otro",
-];
-
-// Mock data temporal
-const mockVehiculos: Vehiculo[] = [
-  {
-    id: 1,
-    patente: "ABC123",
-    tipo: "Camión",
-    marca: "Ford",
-    modelo: "F-150",
-    anio: 2022,
-    activo: true,
-    empresaId: 1,
-    empresaNombre: "Empresa A",
-  },
-  {
-    id: 2,
-    patente: "XYZ789",
-    tipo: "Tractor",
-    marca: "John Deere",
-    modelo: "6120M",
-    anio: 2021,
-    activo: true,
-    empresaId: 1,
-    empresaNombre: "Empresa A",
-  },
-  {
-    id: 3,
-    patente: "AAA111",
-    tipo: "Pick-up",
-    marca: "Toyota",
-    modelo: "Hilux",
-    anio: 2020,
-    activo: true,
-    empresaId: 2,
-    empresaNombre: "Empresa B",
-  },
-  {
-    id: 4,
-    patente: "BBB222",
-    tipo: "Cosechadora",
-    marca: "Case IH",
-    modelo: "Axial-Flow 8250",
-    anio: 2019,
-    activo: false,
-    empresaId: 2,
-    empresaNombre: "Empresa B",
-  },
-];
-
-const getColorByTipo = (tipo: TipoVehiculo): string => {
-  const colors: Record<TipoVehiculo, string> = {
-    Camión: "#3b82f6",
-    Tractor: "#10b981",
-    Sembradora: "#f59e0b",
-    Cosechadora: "#8b5cf6",
-    Pulverizadora: "#ec4899",
-    "Pick-up": "#06b6d4",
-    Generador: "#ef4444",
-    Otro: "#667eea",
-  };
-  return colors[tipo] || "#667eea";
-};
-
 export default function VehiculosPage() {
-  const { user, tenantConfig } = useTenantStore();
-  const tenantName = tenantConfig?.name;
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [openDialog, setOpenDialog] = useState<boolean>(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
-  const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null);
-  const [deleteVehiculo, setDeleteVehiculo] = useState<Vehiculo | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterTipo, setFilterTipo] = useState<string>("Todos");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [formData, setFormData] = useState<VehiculoFormData>({
-    patente: "",
-    tipo: "Camión",
-    marca: "",
-    modelo: "",
-    anio: new Date().getFullYear(),
-    capacidad: "",
-    activo: true,
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
+  // Stores
+  const { user, hasPermission } = useTenantStore();
+  const { unidades } = useUnidadStore();
+  const canManage = hasPermission("vehiculos:gestionar");
 
+  // Estados locales
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterTipo, setFilterTipo] = useState<string>("todos");
+  const [filterEstado, setFilterEstado] = useState<string>("todos");
+
+  // Diálogos
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [editingVehiculo, setEditingVehiculo] = useState<VehiculoConStats | null>(null);
+  const [deleteVehiculo, setDeleteVehiculo] = useState<VehiculoConStats | null>(null);
+
+  // Formulario
+  const [formData, setFormData] = useState<VehiculoFormData>(getInitialFormData());
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // React Query hooks
+  const { data: vehiculosData, isLoading, error } = useVehiculos({
+    search: searchTerm || undefined,
+    tipo: filterTipo !== "todos" ? (filterTipo as TipoVehiculo) : undefined,
+    estado: filterEstado !== "todos" ? (filterEstado as EstadoVehiculo) : undefined,
+  });
+
+  const createMutation = useCreateVehiculo();
+  const updateMutation = useUpdateVehiculo();
+  const deleteMutation = useDeleteVehiculo();
+
+  // Vehículos filtrados (ya vienen filtrados por unidad desde el hook)
+  const vehiculos = useMemo(() => {
+    return vehiculosData?.data || [];
+  }, [vehiculosData]);
+
+  // Dropzone para imagen
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -169,66 +144,32 @@ export default function VehiculosPage() {
     multiple: false,
   });
 
-  useEffect(() => {
-    const loadVehiculos = async () => {
-      setLoading(true);
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setVehiculos(mockVehiculos);
-      } catch (error) {
-        console.error("Error loading vehiculos:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadVehiculos();
-  }, []);
-
-  const handleExport = (): void => {
-    const dataToExport = filteredVehiculos.map((v) => ({
-      Patente: v.patente,
-      Tipo: v.tipo,
-      Marca: v.marca || "",
-      Modelo: v.modelo || "",
-      Año: v.anio || "",
-      Estado: v.activo ? "Activo" : "Inactivo",
-      ...(user?.role === "admin" && { Empresa: v.empresaNombre }),
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Vehículos");
-    XLSX.writeFile(
-      wb,
-      `Vehiculos_${new Date().toISOString().split("T")[0]}.xlsx`
-    );
-  };
-
-  const handleNew = (): void => {
+  // Handlers
+  const handleNew = () => {
     setEditingVehiculo(null);
-    setFormData({
-      patente: "",
-      tipo: "Camión",
-      marca: "",
-      modelo: "",
-      anio: new Date().getFullYear(),
-      capacidad: "",
-      activo: true,
-    });
+    setFormData(getInitialFormData());
     setImageFile(null);
     setErrors({});
     setOpenDialog(true);
   };
 
-  const handleEdit = (vehiculo: Vehiculo): void => {
+  const handleEdit = (vehiculo: VehiculoConStats) => {
     setEditingVehiculo(vehiculo);
     setFormData({
       patente: vehiculo.patente,
+      marca: vehiculo.marca,
+      modelo: vehiculo.modelo,
+      anio: vehiculo.anio,
       tipo: vehiculo.tipo,
-      marca: vehiculo.marca || "",
-      modelo: vehiculo.modelo || "",
-      anio: vehiculo.anio || new Date().getFullYear(),
-      capacidad: "",
+      tipoCombustible: vehiculo.tipoCombustible,
+      capacidadTanque: vehiculo.capacidadTanque,
+      kmActual: vehiculo.kmActual,
+      horasActual: vehiculo.horasActual,
+      estado: vehiculo.estado,
+      choferAsignadoId: vehiculo.choferAsignadoId,
+      centroCostoId: vehiculo.centroCostoId,
+      unidadId: vehiculo.unidadId,
+      observaciones: vehiculo.observaciones,
       activo: vehiculo.activo,
     });
     setImageFile(null);
@@ -236,21 +177,36 @@ export default function VehiculosPage() {
     setOpenDialog(true);
   };
 
+  const handleDeleteClick = (vehiculo: VehiculoConStats) => {
+    setDeleteVehiculo(vehiculo);
+    setOpenDeleteDialog(true);
+  };
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-    if (!formData.patente.trim())
+
+    if (!formData.patente.trim()) {
       newErrors.patente = "La patente es obligatoria";
-    if (!formData.tipo) newErrors.tipo = "El tipo es obligatorio";
-    if (!formData.marca.trim()) newErrors.marca = "La marca es obligatoria";
-    if (!formData.modelo.trim()) newErrors.modelo = "El modelo es obligatorio";
-    if (!formData.anio) {
-      newErrors.anio = "El año es obligatorio";
-    } else if (
-      formData.anio < 1900 ||
-      formData.anio > new Date().getFullYear() + 1
-    ) {
+    }
+    if (!formData.marca.trim()) {
+      newErrors.marca = "La marca es obligatoria";
+    }
+    if (!formData.modelo.trim()) {
+      newErrors.modelo = "El modelo es obligatorio";
+    }
+    if (!formData.tipo) {
+      newErrors.tipo = "El tipo es obligatorio";
+    }
+    if (!formData.tipoCombustible) {
+      newErrors.tipoCombustible = "El tipo de combustible es obligatorio";
+    }
+    if (formData.capacidadTanque <= 0) {
+      newErrors.capacidadTanque = "La capacidad debe ser mayor a 0";
+    }
+    if (formData.anio && (formData.anio < 1900 || formData.anio > new Date().getFullYear() + 1)) {
       newErrors.anio = "Año inválido";
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -260,74 +216,83 @@ export default function VehiculosPage() {
 
     try {
       if (editingVehiculo) {
-        setVehiculos(
-          vehiculos.map((v) =>
-            v.id === editingVehiculo.id
-              ? { ...editingVehiculo, ...formData }
-              : v
-          )
-        );
+        await updateMutation.mutateAsync({
+          id: editingVehiculo.id,
+          data: formData,
+        });
       } else {
-        const newVehiculo: Vehiculo = {
-          id: Math.max(...vehiculos.map((v) => v.id), 0) + 1,
-          patente: formData.patente,
-          tipo: formData.tipo,
-          marca: formData.marca,
-          modelo: formData.modelo,
-          anio: formData.anio,
-          activo: formData.activo,
-          empresaId: 1,
-          empresaNombre: tenantName,
-        };
-        setVehiculos([...vehiculos, newVehiculo]);
+        await createMutation.mutateAsync(formData);
       }
       setOpenDialog(false);
     } catch (error) {
-      console.error("Error saving vehiculo:", error);
+      // Error manejado por el mutation
     }
-  };
-
-  const handleDeleteClick = (vehiculo: Vehiculo): void => {
-    setDeleteVehiculo(vehiculo);
-    setOpenDeleteDialog(true);
   };
 
   const handleDelete = async () => {
-    if (deleteVehiculo) {
-      try {
-        setVehiculos(vehiculos.filter((v) => v.id !== deleteVehiculo.id));
-      } catch (error) {
-        console.error("Error deleting vehiculo:", error);
-      }
+    if (!deleteVehiculo) return;
+
+    try {
+      await deleteMutation.mutateAsync(deleteVehiculo.id);
+      setOpenDeleteDialog(false);
+      setDeleteVehiculo(null);
+    } catch (error) {
+      // Error manejado por el mutation
     }
-    setOpenDeleteDialog(false);
-    setDeleteVehiculo(null);
   };
 
-  if (loading) {
+  const handleExport = () => {
+    const dataToExport = vehiculos.map((v) => ({
+      Patente: v.patente,
+      Tipo: TIPOS_VEHICULO.find((t) => t.value === v.tipo)?.label || v.tipo,
+      Marca: v.marca,
+      Modelo: v.modelo,
+      Año: v.anio || "",
+      Combustible: TIPOS_COMBUSTIBLE.find((t) => t.value === v.tipoCombustible)?.label || v.tipoCombustible,
+      "Capacidad Tanque (L)": v.capacidadTanque,
+      Estado: ESTADOS_VEHICULO.find((e) => e.value === v.estado)?.label || v.estado,
+      "Litros Consumidos": v.stats?.totalLitros || 0,
+      "Costo Total": v.stats?.totalCosto || 0,
+      ...(user?.role === "admin" && { "Unidad de Negocio": v.unidadNombre || "Sin asignar" }),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Vehículos");
+    XLSX.writeFile(wb, `Vehiculos_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Archivo exportado correctamente");
+  };
+
+  // Loading state
+  if (isLoading) {
     return (
-      <Box sx={{ p: 4 }}>
-        <LinearProgress />
-        <Typography sx={{ mt: 2 }}>Cargando vehículos...</Typography>
+      <Box sx={{ p: 3 }}>
+        <LinearProgress sx={{ mb: 2 }} />
+        <Grid container spacing={3}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
+              <Skeleton variant="rounded" height={200} />
+            </Grid>
+          ))}
+        </Grid>
       </Box>
     );
   }
 
-  const vehiculosPorEmpresa = vehiculos;
-
-  const filteredVehiculos = vehiculosPorEmpresa.filter((v) => {
-    const term = searchTerm.toLowerCase();
-    const matchSearch =
-      v.patente.toLowerCase().includes(term) ||
-      (v.marca && v.marca.toLowerCase().includes(term)) ||
-      (v.modelo && v.modelo.toLowerCase().includes(term));
-    const matchTipo = filterTipo === "Todos" || v.tipo === filterTipo;
-    return matchSearch && matchTipo;
-  });
+  // Error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Error al cargar vehículos: {error.message}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header alineado */}
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
@@ -347,8 +312,10 @@ export default function VehiculosPage() {
               mb: 0.5,
             }}
           >
-            Gestión de vehículos y maquinaria • {filteredVehiculos.length}{" "}
-            {filteredVehiculos.length === 1 ? "vehículo" : "vehículos"}
+            Gestión de Vehículos y Maquinaria
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {vehiculos.length} {vehiculos.length === 1 ? "vehículo" : "vehículos"} registrados
           </Typography>
         </Box>
 
@@ -357,7 +324,7 @@ export default function VehiculosPage() {
             variant="outlined"
             startIcon={<FileDownloadIcon />}
             onClick={handleExport}
-            disabled={filteredVehiculos.length === 0}
+            disabled={vehiculos.length === 0}
             sx={{
               borderColor: "#10b981",
               color: "#10b981",
@@ -368,23 +335,25 @@ export default function VehiculosPage() {
           >
             Exportar
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNew}
-            sx={{
-              bgcolor: "#1E2C56",
-              fontWeight: 600,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#16213E" },
-            }}
-          >
-            Nuevo vehículo
-          </Button>
+          {canManage && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleNew}
+              sx={{
+                bgcolor: "#1E2C56",
+                fontWeight: 600,
+                textTransform: "none",
+                "&:hover": { bgcolor: "#16213E" },
+              }}
+            >
+              Nuevo Vehículo
+            </Button>
+          )}
         </Box>
       </Box>
 
-      {/* Filtros estilo card */}
+      {/* Filtros */}
       <Box
         sx={{
           mb: 3,
@@ -419,326 +388,355 @@ export default function VehiculosPage() {
           label="Tipo"
           value={filterTipo}
           onChange={(e) => setFilterTipo(e.target.value)}
-          sx={{ minWidth: 180 }}
+          sx={{ minWidth: 160 }}
         >
-          <MenuItem value="Todos">Todos los tipos</MenuItem>
+          <MenuItem value="todos">Todos los tipos</MenuItem>
           {TIPOS_VEHICULO.map((tipo) => (
-            <MenuItem key={tipo} value={tipo}>
-              {tipo}
+            <MenuItem key={tipo.value} value={tipo.value}>
+              {tipo.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          size="small"
+          label="Estado"
+          value={filterEstado}
+          onChange={(e) => setFilterEstado(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="todos">Todos los estados</MenuItem>
+          {ESTADOS_VEHICULO.map((estado) => (
+            <MenuItem key={estado.value} value={estado.value}>
+              {estado.label}
             </MenuItem>
           ))}
         </TextField>
       </Box>
 
       {/* Grid de vehículos */}
-      <Grid
-        container
-        spacing={3}
-        sx={{
-          alignItems: "stretch",
-        }}
-      >
-        {filteredVehiculos.map((vehiculo) => {
-          // Variable local para preview de imagen (si existiera)
-          const vehicleImageFile = null; // En una app real, esto vendría de vehiculo.imagenUrl
-
-          return (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              key={vehiculo.id}
-              sx={{ display: "flex", alignItems: "stretch" }}
+      <Grid container spacing={3}>
+        {vehiculos.map((vehiculo) => (
+          <Grid item xs={12} sm={6} md={4} lg={3} key={vehiculo.id}>
+            <Card
+              elevation={0}
+              sx={{
+                background: "white",
+                borderRadius: 3,
+                border: "1px solid #e2e8f0",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                transition: "all 0.25s ease",
+                "&:hover": {
+                  boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
+                  transform: "translateY(-3px)",
+                  borderColor: getColorByTipo(vehiculo.tipo),
+                },
+              }}
             >
-              <Card
-                elevation={0}
-                sx={{
-                  background: "white",
-                  borderRadius: 3,
-                  border: "1px solid #e2e8f0",
-                  width: 500,
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "all 0.25s ease",
-                  "&:hover": {
-                    boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
-                    transform: "translateY(-3px)",
-                    borderColor: getColorByTipo(vehiculo.tipo),
-                  },
-                }}
-              >
-                <CardContent
-                  sx={{
-                    p: 2.5,
-                    display: "flex",
-                    gap: 2,
-                    height: "100%",
-                  }}
-                >
-                  {/* Izquierda: datos */}
+              <CardContent sx={{ p: 2.5, flex: 1, display: "flex", flexDirection: "column" }}>
+                {/* Header de la tarjeta */}
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                   <Box
                     sx={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      pl: 1,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        mb: 1.5,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 2,
-                          bgcolor: `${getColorByTipo(vehiculo.tipo)}15`,
-                          color: getColorByTipo(vehiculo.tipo),
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <DirectionsCarIcon sx={{ fontSize: 22 }} />
-                      </Box>
-
-                      <Chip
-                        label={vehiculo.tipo}
-                        size="small"
-                        sx={{
-                          bgcolor: `${getColorByTipo(vehiculo.tipo)}15`,
-                          color: getColorByTipo(vehiculo.tipo),
-                          fontWeight: 600,
-                          border: "none",
-                        }}
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 2,
-                        mb: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={700}>
-                          {vehiculo.patente}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ wordBreak: "break-word" }}
-                        >
-                          {vehiculo.marca} {vehiculo.modelo}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ textAlign: "right" }}>
-                        <Typography variant="body2" fontWeight={600}>
-                          {vehiculo.anio}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Chip
-                      label={vehiculo.activo ? "Activo" : "Inactivo"}
-                      size="small"
-                      sx={{
-                        bgcolor: vehiculo.activo ? "#10b98115" : "#99999915",
-                        color: vehiculo.activo ? "#10b981" : "#999",
-                        fontWeight: 600,
-                        width: "fit-content",
-                        mb: 1,
-                      }}
-                    />
-
-                    {user?.role === "admin" && (
-                      <Box sx={{ mt: 0.5 }}>
-                        <Typography variant="body2" fontWeight={500}>
-                          {vehiculo.empresaNombre || "N/A"}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 1 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(vehiculo)}
-                        sx={{
-                          bgcolor: "#f3f4f6",
-                          "&:hover": { bgcolor: "#e5e7eb" },
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteClick(vehiculo)}
-                        sx={{
-                          bgcolor: "#fee2e2",
-                          color: "#dc2626",
-                          "&:hover": { bgcolor: "#fecaca" },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Box>
-
-                  {/* Derecha: imagen del vehículo */}
-                  <Box
-                    sx={{
-                      width: 250,
-                      minWidth: 150,
-                      height: "100%",
+                      width: 44,
+                      height: 44,
                       borderRadius: 2,
-                      overflow: "hidden",
-                      bgcolor: "#f3f4f6",
+                      bgcolor: `${getColorByTipo(vehiculo.tipo)}15`,
+                      color: getColorByTipo(vehiculo.tipo),
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      flexShrink: 0,
                     }}
                   >
-                    {vehicleImageFile ? (
-                      <img
-                        src={URL.createObjectURL(vehicleImageFile)}
-                        alt={vehiculo.patente}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          borderRadius: 8,
-                        }}
-                      />
-                    ) : (
-                      <DirectionsCarIcon
-                        sx={{ fontSize: 40, color: "#9ca3af" }}
-                      />
-                    )}
+                    <DirectionsCarIcon sx={{ fontSize: 24 }} />
                   </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          );
-        })}
+                  <Chip
+                    label={TIPOS_VEHICULO.find((t) => t.value === vehiculo.tipo)?.label || vehiculo.tipo}
+                    size="small"
+                    sx={{
+                      bgcolor: `${getColorByTipo(vehiculo.tipo)}15`,
+                      color: getColorByTipo(vehiculo.tipo),
+                      fontWeight: 600,
+                    }}
+                  />
+                </Box>
+
+                {/* Info principal */}
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+                  {vehiculo.patente}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  {vehiculo.marca} {vehiculo.modelo} {vehiculo.anio && `(${vehiculo.anio})`}
+                </Typography>
+
+                {/* Stats */}
+                <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <LocalGasStationIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                    <Typography variant="caption" color="text.secondary">
+                      {vehiculo.capacidadTanque}L
+                    </Typography>
+                  </Box>
+                  {vehiculo.stats && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <SpeedIcon sx={{ fontSize: 16, color: "#6b7280" }} />
+                      <Typography variant="caption" color="text.secondary">
+                        {vehiculo.stats.totalLitros.toLocaleString()}L usados
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Chips de estado y unidad */}
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                  <Chip
+                    label={ESTADOS_VEHICULO.find((e) => e.value === vehiculo.estado)?.label || vehiculo.estado}
+                    size="small"
+                    sx={{
+                      bgcolor: vehiculo.estado === "activo" ? "#10b98115" : "#f59e0b15",
+                      color: vehiculo.estado === "activo" ? "#10b981" : "#f59e0b",
+                      fontWeight: 600,
+                    }}
+                  />
+                  <Chip
+                    label={TIPOS_COMBUSTIBLE.find((c) => c.value === vehiculo.tipoCombustible)?.label || vehiculo.tipoCombustible}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontWeight: 500 }}
+                  />
+                </Box>
+
+                {/* Unidad de negocio (solo admin) */}
+                {user?.role === "admin" && vehiculo.unidadNombre && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+                    📍 {vehiculo.unidadNombre}
+                  </Typography>
+                )}
+
+                {/* Acciones */}
+                {canManage && (
+                  <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(vehiculo)}
+                      sx={{
+                        bgcolor: "#f3f4f6",
+                        "&:hover": { bgcolor: "#e5e7eb" },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(vehiculo)}
+                      sx={{
+                        bgcolor: "#fee2e2",
+                        color: "#dc2626",
+                        "&:hover": { bgcolor: "#fecaca" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
-      {filteredVehiculos.length === 0 && (
+      {/* Empty state */}
+      {vehiculos.length === 0 && (
         <Box sx={{ textAlign: "center", py: 8 }}>
           <DirectionsCarIcon sx={{ fontSize: 64, color: "#ddd", mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
             No hay vehículos registrados
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {canManage ? "Haz clic en 'Nuevo Vehículo' para agregar uno" : "No tienes vehículos asignados"}
+          </Typography>
         </Box>
       )}
 
       {/* Diálogo de crear/editar */}
-      <Dialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          {editingVehiculo ? "Editar vehículo" : "Nuevo vehículo"}
+          {editingVehiculo ? "Editar Vehículo" : "Nuevo Vehículo"}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", gap: 3, pt: 2 }}>
             {/* Formulario */}
-            <Box
-              sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}
-            >
-              <TextField
-                label="Patente"
-                value={formData.patente}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    patente: e.target.value.toUpperCase(),
-                  })
-                }
-                error={!!errors.patente}
-                helperText={errors.patente}
-                required
-                fullWidth
-              />
-              <TextField
-                select
-                label="Tipo"
-                value={formData.tipo}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    tipo: e.target.value as TipoVehiculo,
-                  })
-                }
-                error={!!errors.tipo}
-                helperText={errors.tipo}
-                required
-                fullWidth
-              >
-                {TIPOS_VEHICULO.map((tipo) => (
-                  <MenuItem key={tipo} value={tipo}>
-                    {tipo}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Marca"
-                value={formData.marca}
-                onChange={(e) =>
-                  setFormData({ ...formData, marca: e.target.value })
-                }
-                error={!!errors.marca}
-                helperText={errors.marca}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Modelo"
-                value={formData.modelo}
-                onChange={(e) =>
-                  setFormData({ ...formData, modelo: e.target.value })
-                }
-                error={!!errors.modelo}
-                helperText={errors.modelo}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Año"
-                type="number"
-                value={formData.anio}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    anio: parseInt(e.target.value, 10),
-                  })
-                }
-                error={!!errors.anio}
-                helperText={errors.anio}
-                required
-                fullWidth
-              />
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Patente"
+                    value={formData.patente}
+                    onChange={(e) => setFormData({ ...formData, patente: e.target.value.toUpperCase() })}
+                    error={!!errors.patente}
+                    helperText={errors.patente}
+                    required
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    select
+                    label="Tipo"
+                    value={formData.tipo}
+                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoVehiculo })}
+                    error={!!errors.tipo}
+                    helperText={errors.tipo}
+                    required
+                    fullWidth
+                  >
+                    {TIPOS_VEHICULO.map((tipo) => (
+                      <MenuItem key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Marca"
+                    value={formData.marca}
+                    onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
+                    error={!!errors.marca}
+                    helperText={errors.marca}
+                    required
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Modelo"
+                    value={formData.modelo}
+                    onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                    error={!!errors.modelo}
+                    helperText={errors.modelo}
+                    required
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    label="Año"
+                    type="number"
+                    value={formData.anio || ""}
+                    onChange={(e) => setFormData({ ...formData, anio: parseInt(e.target.value, 10) || undefined })}
+                    error={!!errors.anio}
+                    helperText={errors.anio}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    select
+                    label="Combustible"
+                    value={formData.tipoCombustible}
+                    onChange={(e) => setFormData({ ...formData, tipoCombustible: e.target.value as TipoCombustible })}
+                    error={!!errors.tipoCombustible}
+                    helperText={errors.tipoCombustible}
+                    required
+                    fullWidth
+                  >
+                    {TIPOS_COMBUSTIBLE.map((tipo) => (
+                      <MenuItem key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    label="Capacidad Tanque (L)"
+                    type="number"
+                    value={formData.capacidadTanque || ""}
+                    onChange={(e) => setFormData({ ...formData, capacidadTanque: parseFloat(e.target.value) || 0 })}
+                    error={!!errors.capacidadTanque}
+                    helperText={errors.capacidadTanque}
+                    required
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Km Actual"
+                    type="number"
+                    value={formData.kmActual || ""}
+                    onChange={(e) => setFormData({ ...formData, kmActual: parseInt(e.target.value, 10) || 0 })}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Horas Motor"
+                    type="number"
+                    value={formData.horasActual || ""}
+                    onChange={(e) => setFormData({ ...formData, horasActual: parseInt(e.target.value, 10) || 0 })}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    select
+                    label="Estado"
+                    value={formData.estado}
+                    onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoVehiculo })}
+                    fullWidth
+                  >
+                    {ESTADOS_VEHICULO.map((estado) => (
+                      <MenuItem key={estado.value} value={estado.value}>
+                        {estado.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Selector de unidad (solo admin con múltiples unidades) */}
+                {user?.role === "admin" && unidades.length > 0 && (
+                  <Grid item xs={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Unidad de Negocio</InputLabel>
+                      <Select
+                        value={formData.unidadId || ""}
+                        onChange={(e) => setFormData({ ...formData, unidadId: e.target.value as number || undefined })}
+                        label="Unidad de Negocio"
+                      >
+                        <MenuItem value="">Sin asignar</MenuItem>
+                        {unidades.map((unidad) => (
+                          <MenuItem key={unidad.id} value={unidad.id}>
+                            {unidad.nombre}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                )}
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Observaciones"
+                    value={formData.observaciones || ""}
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    multiline
+                    rows={2}
+                    fullWidth
+                  />
+                </Grid>
+              </Grid>
             </Box>
 
+            {/* Dropzone para imagen */}
             <Box
               {...getRootProps()}
               sx={{
-                width: 140,
-                height: 140,
+                width: 180,
+                minHeight: 180,
                 borderRadius: 2,
                 bgcolor: isDragActive ? "#d1fae5" : "#f3f4f6",
                 border: "2px dashed #10b981",
@@ -746,6 +744,7 @@ export default function VehiculosPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
+                flexShrink: 0,
                 "&:hover": { bgcolor: "#d1fae5" },
               }}
             >
@@ -762,48 +761,53 @@ export default function VehiculosPage() {
                   }}
                 />
               ) : (
-                <Typography
-                variant="caption"
-                sx={{ 
-                  color: 'text.secondary',
-                  letterSpacing: '0.5px',
-                  fontWeight: 400,
-                  width: '50%',
-                  height: '50%',
-                }}
-              >
-                Arrastrá o clickeá para subir una imagen
-              </Typography>
-              
-              
+                <Box sx={{ textAlign: "center", p: 2 }}>
+                  <DirectionsCarIcon sx={{ fontSize: 40, color: "#9ca3af", mb: 1 }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Arrastrá o clickeá para subir foto
+                  </Typography>
+                </Box>
               )}
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>
-            {editingVehiculo ? "Guardar cambios" : "Crear vehículo"}
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={createMutation.isPending || updateMutation.isPending}
+            sx={{ bgcolor: "#1E2C56", "&:hover": { bgcolor: "#16213E" } }}
+          >
+            {createMutation.isPending || updateMutation.isPending
+              ? "Guardando..."
+              : editingVehiculo
+              ? "Guardar Cambios"
+              : "Crear Vehículo"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Confirmación de eliminación */}
-      <Dialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-      >
-        <DialogTitle>Confirmar eliminación</DialogTitle>
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de eliminar el vehículo{" "}
-            <strong>{deleteVehiculo?.patente}</strong>?
+            ¿Estás seguro de eliminar el vehículo <strong>{deleteVehiculo?.patente}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            Eliminar
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
           </Button>
         </DialogActions>
       </Dialog>
