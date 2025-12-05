@@ -16,6 +16,8 @@ export type TipoLicencia = "A" | "B" | "C" | "D" | "E";
 export interface Chofer {
   id: number;
   empresaId: number;
+  unidadId?: number; // Unidad de negocio a la que pertenece
+  unidadNombre?: string;
   nombre: string;
   apellido: string;
   dni: string;
@@ -44,13 +46,24 @@ export interface ChoferFormData {
   telefono?: string;
   email?: string;
   whatsappNumber?: string;
-licenciaTipo?: TipoLicencia;
+  licenciaTipo?: TipoLicencia;
   licenciaVencimiento?: string;
   estado: EstadoChofer;
   vehiculoAsignadoId?: number;
+  unidadId?: number;
   foto?: string;
   observaciones?: string;
   activo: boolean;
+}
+
+/**
+ * Filtros para choferes
+ */
+export interface ChoferFilters {
+  search?: string;
+  estado?: EstadoChofer;
+  unidadId?: number;
+  activo?: boolean;
 }
 
 /**
@@ -102,4 +115,3 @@ export const TIPOS_LICENCIA: { value: TipoLicencia; label: string }[] = [
   { value: "D", label: "Clase D - Transporte de pasajeros" },
   { value: "E", label: "Clase E - Maquinaria especial" },
 ];
-

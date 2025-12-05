@@ -16,6 +16,8 @@ export type EstadoSurtidor = "activo" | "mantenimiento" | "inactivo";
 export interface Surtidor {
   id: number;
   empresaId: number;
+  unidadId?: number; // Unidad de negocio
+  unidadNombre?: string;
   nombre: string;
   codigo?: string;
   tipo: TipoSurtidor;
@@ -47,7 +49,19 @@ export interface SurtidorFormData {
   estado: EstadoSurtidor;
   proveedor?: string;
   observaciones?: string;
+  unidadId?: number;
   activo: boolean;
+}
+
+/**
+ * Filtros para surtidores
+ */
+export interface SurtidorFilters {
+  search?: string;
+  tipo?: TipoSurtidor;
+  estado?: EstadoSurtidor;
+  unidadId?: number;
+  activo?: boolean;
 }
 
 /**
@@ -86,4 +100,3 @@ export const ESTADOS_SURTIDOR: { value: EstadoSurtidor; label: string }[] = [
   { value: "mantenimiento", label: "En mantenimiento" },
   { value: "inactivo", label: "Inactivo" },
 ];
-

@@ -1,26 +1,38 @@
 // src/hooks/queries/useSurtidores.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { surtidoresService } from "@/services";
-import type { SurtidorFormData, PaginationParams } from "@/types";
+import { useAuthStore } from "@/stores/auth.store";
+import { useUnidadIdFilter } from "@/hooks/useUnidadFilterLogic";
+import type { SurtidorFormData, SurtidorFilters, PaginationParams } from "@/types";
 import { toast } from "sonner";
 
 export const surtidoresKeys = {
   all: ["surtidores"] as const,
   lists: () => [...surtidoresKeys.all, "list"] as const,
-  list: (empresaId: number, params?: PaginationParams & { search?: string }) =>
+  list: (empresaId: number, params?: PaginationParams & SurtidorFilters) =>
     [...surtidoresKeys.lists(), empresaId, params] as const,
   details: () => [...surtidoresKeys.all, "detail"] as const,
   detail: (id: number) => [...surtidoresKeys.details(), id] as const,
   stats: (id: number) => [...surtidoresKeys.all, "stats", id] as const,
 };
 
-export function useSurtidores(
-  empresaId: number,
-  params?: PaginationParams & { search?: string; tipo?: string; estado?: string }
-) {
+/**
+ * Hook para listar surtidores con filtro automático por unidad
+ */
+export function useSurtidores(params?: PaginationParams & SurtidorFilters) {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
+  const unidadIdFilter = useUnidadIdFilter();
+
+  // Combinar filtros pasados con el filtro de unidad
+  const fullParams = {
+    ...params,
+    unidadId: params?.unidadId ?? unidadIdFilter,
+  };
+
   return useQuery({
-    queryKey: surtidoresKeys.list(empresaId, params),
-    queryFn: () => surtidoresService.list(empresaId, params),
+    queryKey: surtidoresKeys.list(empresaId, fullParams),
+    queryFn: () => surtidoresService.list(empresaId, fullParams),
     enabled: empresaId > 0,
     staleTime: 1000 * 60 * 5,
   });
@@ -43,8 +55,10 @@ export function useSurtidorStats(id: number) {
   });
 }
 
-export function useCreateSurtidor(empresaId: number) {
+export function useCreateSurtidor() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
 
   return useMutation({
     mutationFn: (data: SurtidorFormData) => surtidoresService.create(empresaId, data),

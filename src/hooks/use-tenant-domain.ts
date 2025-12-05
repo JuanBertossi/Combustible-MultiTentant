@@ -1,26 +1,32 @@
 import { useMemo } from "react";
 
-export const useTenantDomain = () => {
-  const tenant: string | 'default' = useMemo(() => {
-    // Obtener el hostname actual
+/**
+ * Hook para detectar el tenant actual basado en el subdominio
+ * 
+ * Ejemplos:
+ * - empresaa.combustible.local → "empresaa"
+ * - localhost:5173 → "default"
+ * - empresaa.localhost:5173 → "empresaa"
+ */
+export const useTenantDomain = (): string => {
+  const tenant = useMemo(() => {
     const hostname = window.location.hostname;
-    const appDomain = import.meta.env.VITE_APP_DOMAIN;
+    const appDomain = import.meta.env.VITE_APP_DOMAIN || "localhost";
     const defaultTenant = import.meta.env.VITE_APP_DEFAULT_TENANT || "default";
 
-    
+    // Caso especial: localhost sin subdominio
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return defaultTenant;
+    }
 
     // Extraer el subdominio
-    const subdomain = hostname.replace(`.${appDomain}`, "");
+    // Para: empresaa.combustible.local → empresaa
+    // Para: empresaa.localhost → empresaa
+    const subdomain = hostname.split(".")[0];
 
-    console.log({
-      hostname,
-      appDomain,
-      subdomain,
-    })
-
-    // Validar que sea un subdominio válido
-    if (subdomain && subdomain !== hostname) {
-      return subdomain;
+    // Validar que no sea el dominio principal
+    if (subdomain && subdomain !== appDomain && subdomain !== "localhost") {
+      return subdomain.toLowerCase();
     }
 
     return defaultTenant;

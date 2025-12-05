@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { User, Permission } from "@/types";
+import { ROLE_PERMISSIONS } from "@/types";
 import { authService } from "@/services";
 
 interface AuthState {
@@ -99,39 +100,14 @@ export const useAuthStore = create<AuthState>()(
       // Limpiar error
       clearError: () => set({ error: null }),
 
-      // Verificar permiso
+      // Verificar permiso (usa ROLE_PERMISSIONS centralizado)
       hasPermission: (permission: Permission) => {
         const user = get().user;
         if (!user) return false;
         if (user.role === "superadmin") return true;
 
-        // Mapeo básico de permisos por rol
-        const rolePermissions: Record<string, Permission[]> = {
-          admin: [
-            "eventos:crear",
-            "eventos:editar",
-            "eventos:eliminar",
-            "eventos:validar",
-            "eventos:ver",
-            "vehiculos:gestionar",
-            "usuarios:gestionar",
-            "reportes:ver",
-            "reportes:exportar",
-            "configuracion:editar",
-          ],
-          supervisor: [
-            "eventos:crear",
-            "eventos:editar",
-            "eventos:validar",
-            "eventos:ver",
-            "reportes:ver",
-            "reportes:exportar",
-          ],
-          operador: ["eventos:crear", "eventos:ver"],
-          auditor: ["eventos:ver", "reportes:ver", "reportes:exportar"],
-        };
-
-        return rolePermissions[user.role]?.includes(permission) ?? false;
+        // Usa el mapeo centralizado de types/auth.ts
+        return ROLE_PERMISSIONS[user.role]?.includes(permission) ?? false;
       },
 
       // Verificar rol

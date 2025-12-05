@@ -1,26 +1,38 @@
 // src/hooks/queries/useChoferes.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { choferesService } from "@/services";
-import type { ChoferFormData, PaginationParams } from "@/types";
+import { useAuthStore } from "@/stores/auth.store";
+import { useUnidadIdFilter } from "@/hooks/useUnidadFilterLogic";
+import type { ChoferFormData, ChoferFilters, PaginationParams } from "@/types";
 import { toast } from "sonner";
 
 export const choferesKeys = {
   all: ["choferes"] as const,
   lists: () => [...choferesKeys.all, "list"] as const,
-  list: (empresaId: number, params?: PaginationParams & { search?: string }) =>
+  list: (empresaId: number, params?: PaginationParams & ChoferFilters) =>
     [...choferesKeys.lists(), empresaId, params] as const,
   details: () => [...choferesKeys.all, "detail"] as const,
   detail: (id: number) => [...choferesKeys.details(), id] as const,
   stats: (id: number) => [...choferesKeys.all, "stats", id] as const,
 };
 
-export function useChoferes(
-  empresaId: number,
-  params?: PaginationParams & { search?: string; estado?: string }
-) {
+/**
+ * Hook para listar choferes con filtro automático por unidad
+ */
+export function useChoferes(params?: PaginationParams & ChoferFilters) {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
+  const unidadIdFilter = useUnidadIdFilter();
+
+  // Combinar filtros pasados con el filtro de unidad
+  const fullParams = {
+    ...params,
+    unidadId: params?.unidadId ?? unidadIdFilter,
+  };
+
   return useQuery({
-    queryKey: choferesKeys.list(empresaId, params),
-    queryFn: () => choferesService.list(empresaId, params),
+    queryKey: choferesKeys.list(empresaId, fullParams),
+    queryFn: () => choferesService.list(empresaId, fullParams),
     enabled: empresaId > 0,
     staleTime: 1000 * 60 * 5,
   });
@@ -43,8 +55,10 @@ export function useChoferStats(id: number) {
   });
 }
 
-export function useCreateChofer(empresaId: number) {
+export function useCreateChofer() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
 
   return useMutation({
     mutationFn: (data: ChoferFormData) => choferesService.create(empresaId, data),

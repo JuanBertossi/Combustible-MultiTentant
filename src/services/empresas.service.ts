@@ -16,15 +16,15 @@ import { apiClient } from "./api.client";
 const MOCK_EMPRESAS: Empresa[] = [
   {
     id: 1,
-    nombre: "Transportes del Norte",
-    razonSocial: "Transportes del Norte S.A.",
+    nombre: "Empresa A - Agrícola",
+    razonSocial: "Empresa A S.A.",
     cuit: "30-12345678-9",
-    subdomain: "transportes-norte",
-    adminEmail: "admin@transportesnorte.com",
+    subdomain: "empresaa", // Coincide con usuarios mock
+    adminEmail: "admin@empresaA.com",
     telefono: "+54 351 1234567",
     direccion: "Av. Colón 1234, Córdoba",
     activo: true,
-    theme: { primaryColor: "#3B82F6", secondaryColor: "#10B981" },
+    theme: { primaryColor: "#1E3A5F", secondaryColor: "#10B981" },
     policies: {
       requiredPhotos: true,
       requiredLocation: true,
@@ -43,11 +43,11 @@ const MOCK_EMPRESAS: Empresa[] = [
   },
   {
     id: 2,
-    nombre: "Logística Express",
-    razonSocial: "Logística Express S.R.L.",
+    nombre: "Empresa B - Logística",
+    razonSocial: "Empresa B S.R.L.",
     cuit: "30-98765432-1",
-    subdomain: "logistica-express",
-    adminEmail: "admin@logisticaexpress.com",
+    subdomain: "empresab", // Coincide con patrón
+    adminEmail: "admin@empresaB.com",
     telefono: "+54 351 7654321",
     direccion: "Ruta 9 Km 15, Córdoba",
     activo: true,

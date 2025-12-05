@@ -12,19 +12,22 @@ import type {
 import { apiClient } from "./api.client";
 
 /**
- * Mock data para desarrollo
+ * Mock data para desarrollo - Eventos asignados a diferentes unidades
  */
 const MOCK_EVENTOS: EventoExpandido[] = [
+  // Eventos de Campo Norte (unidadId: 1)
   {
     id: 1,
     empresaId: 1,
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
     vehiculoId: 1,
     vehiculoPatente: "ABC123",
     vehiculoTipo: "Camión",
     choferId: 1,
     choferNombre: "Juan Pérez",
     surtidorId: 1,
-    surtidorNombre: "Surtidor Centro",
+    surtidorNombre: "Surtidor Norte",
     litros: 50,
     precio: 850,
     total: 42500,
@@ -36,35 +39,17 @@ const MOCK_EVENTOS: EventoExpandido[] = [
     updatedAt: "2024-12-01T11:00:00Z",
   },
   {
-    id: 2,
-    empresaId: 1,
-    vehiculoId: 2,
-    vehiculoPatente: "XYZ789",
-    vehiculoTipo: "Pickup",
-    choferId: 2,
-    choferNombre: "María González",
-    surtidorId: 2,
-    surtidorNombre: "Surtidor Norte",
-    litros: 35,
-    precio: 850,
-    total: 29750,
-    fecha: "2024-12-02",
-    estado: "pendiente",
-    origen: "web",
-    activo: true,
-    createdAt: "2024-12-02T14:15:00Z",
-    updatedAt: "2024-12-02T14:15:00Z",
-  },
-  {
     id: 3,
     empresaId: 1,
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
     vehiculoId: 3,
     vehiculoPatente: "AAA111",
     vehiculoTipo: "Tractor",
     choferId: 3,
-    choferNombre: "Carlos López",
+    choferNombre: "Pedro López",
     surtidorId: 1,
-    surtidorNombre: "Surtidor Centro",
+    surtidorNombre: "Surtidor Norte",
     litros: 220,
     precio: 850,
     total: 187000,
@@ -76,6 +61,51 @@ const MOCK_EVENTOS: EventoExpandido[] = [
     createdAt: "2024-12-03T08:45:00Z",
     updatedAt: "2024-12-03T08:45:00Z",
   },
+  // Eventos de Campo Sur (unidadId: 2)
+  {
+    id: 2,
+    empresaId: 1,
+    unidadId: 2,
+    unidadNombre: "Campo Sur",
+    vehiculoId: 2,
+    vehiculoPatente: "XYZ789",
+    vehiculoTipo: "Pickup",
+    choferId: 2,
+    choferNombre: "María García",
+    surtidorId: 2,
+    surtidorNombre: "Surtidor Sur",
+    litros: 35,
+    precio: 850,
+    total: 29750,
+    fecha: "2024-12-02",
+    estado: "pendiente",
+    origen: "web",
+    activo: true,
+    createdAt: "2024-12-02T14:15:00Z",
+    updatedAt: "2024-12-02T14:15:00Z",
+  },
+  {
+    id: 4,
+    empresaId: 1,
+    unidadId: 2,
+    unidadNombre: "Campo Sur",
+    vehiculoId: 4,
+    vehiculoPatente: "DEF456",
+    vehiculoTipo: "Tractor",
+    choferId: 5,
+    choferNombre: "Ana Martínez",
+    surtidorId: 2,
+    surtidorNombre: "Surtidor Sur",
+    litros: 150,
+    precio: 850,
+    total: 127500,
+    fecha: "2024-12-04",
+    estado: "validado",
+    origen: "whatsapp",
+    activo: true,
+    createdAt: "2024-12-04T09:30:00Z",
+    updatedAt: "2024-12-04T10:00:00Z",
+  },
 ];
 
 const USE_MOCK = true;
@@ -84,7 +114,7 @@ class EventosService {
   private mockData = [...MOCK_EVENTOS];
 
   /**
-   * Listar eventos con filtros y paginación
+   * Listar eventos con filtros y paginación (incluyendo unidadId)
    */
   async list(filters?: EventoFilters): Promise<PaginatedResponse<EventoExpandido>> {
     if (USE_MOCK) {
@@ -94,6 +124,10 @@ class EventosService {
 
       if (filters?.empresaId) {
         filtered = filtered.filter((e) => e.empresaId === filters.empresaId);
+      }
+      // Filtrar por unidad de negocio
+      if (filters?.unidadId) {
+        filtered = filtered.filter((e) => e.unidadId === filters.unidadId);
       }
       if (filters?.vehiculoId) {
         filtered = filtered.filter((e) => e.vehiculoId === filters.vehiculoId);
@@ -137,15 +171,19 @@ class EventosService {
   }
 
   /**
-   * Listar eventos pendientes de validación
+   * Listar eventos pendientes de validación (con filtro de unidad)
    */
-  async listPendientes(empresaId?: number): Promise<ApiResponse<EventoExpandido[]>> {
+  async listPendientes(empresaId?: number, unidadId?: number): Promise<ApiResponse<EventoExpandido[]>> {
     if (USE_MOCK) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       
       let pendientes = this.mockData.filter((e) => e.estado === "pendiente");
       if (empresaId) {
         pendientes = pendientes.filter((e) => e.empresaId === empresaId);
+      }
+      // Filtrar por unidad de negocio
+      if (unidadId) {
+        pendientes = pendientes.filter((e) => e.unidadId === unidadId);
       }
 
       return { success: true, data: pendientes };
@@ -275,15 +313,19 @@ class EventosService {
   }
 
   /**
-   * Obtener resumen de eventos
+   * Obtener resumen de eventos (con filtro de unidad)
    */
-  async getResumen(empresaId?: number): Promise<ApiResponse<EventosResumen>> {
+  async getResumen(empresaId?: number, unidadId?: number): Promise<ApiResponse<EventosResumen>> {
     if (USE_MOCK) {
       await new Promise((resolve) => setTimeout(resolve, 300));
       
       let eventos = [...this.mockData];
       if (empresaId) {
         eventos = eventos.filter((e) => e.empresaId === empresaId);
+      }
+      // Filtrar por unidad de negocio
+      if (unidadId) {
+        eventos = eventos.filter((e) => e.unidadId === unidadId);
       }
 
       const resumen: EventosResumen = {
@@ -299,7 +341,7 @@ class EventosService {
       return { success: true, data: resumen };
     }
 
-    return apiClient.get<ApiResponse<EventosResumen>>("/eventos/resumen", { empresaId });
+    return apiClient.get<ApiResponse<EventosResumen>>("/eventos/resumen", { empresaId, unidadId });
   }
 }
 

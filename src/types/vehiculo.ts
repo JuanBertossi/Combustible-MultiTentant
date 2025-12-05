@@ -3,12 +3,12 @@
 /**
  * Tipo de vehículo
  */
-export type TipoVehiculo = 
-  | "camion" 
-  | "pickup" 
-  | "tractor" 
-  | "cosechadora" 
-  | "sembradora" 
+export type TipoVehiculo =
+  | "camion"
+  | "pickup"
+  | "tractor"
+  | "cosechadora"
+  | "sembradora"
   | "pulverizadora"
   | "automovil"
   | "utilitario"
@@ -18,20 +18,12 @@ export type TipoVehiculo =
 /**
  * Tipo de combustible
  */
-export type TipoCombustible = 
-  | "diesel" 
-  | "nafta" 
-  | "gnc" 
-  | "biodiesel";
+export type TipoCombustible = "diesel" | "nafta" | "gnc" | "biodiesel";
 
 /**
  * Estado del vehículo
  */
-export type EstadoVehiculo = 
-  | "activo" 
-  | "mantenimiento" 
-  | "inactivo" 
-  | "baja";
+export type EstadoVehiculo = "activo" | "mantenimiento" | "inactivo" | "baja";
 
 /**
  * Vehículo
@@ -39,6 +31,8 @@ export type EstadoVehiculo =
 export interface Vehiculo {
   id: number;
   empresaId: number;
+  unidadId?: number; // Unidad de negocio a la que pertenece
+  unidadNombre?: string;
   patente: string;
   marca: string;
   modelo: string;
@@ -75,9 +69,22 @@ export interface VehiculoFormData {
   estado: EstadoVehiculo;
   choferAsignadoId?: number;
   centroCostoId?: number;
+  unidadId?: number;
   foto?: string;
   observaciones?: string;
   activo: boolean;
+}
+
+/**
+ * Filtros para vehículos
+ */
+export interface VehiculoFilters {
+  search?: string;
+  tipo?: TipoVehiculo;
+  estado?: EstadoVehiculo;
+  tipoCombustible?: TipoCombustible;
+  unidadId?: number;
+  activo?: boolean;
 }
 
 /**
@@ -137,4 +144,3 @@ export const ESTADOS_VEHICULO: { value: EstadoVehiculo; label: string }[] = [
   { value: "inactivo", label: "Inactivo" },
   { value: "baja", label: "Dado de baja" },
 ];
-

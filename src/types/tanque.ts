@@ -21,6 +21,8 @@ export type NivelAlerta = "normal" | "bajo" | "critico" | "vacio";
 export interface Tanque {
   id: number;
   empresaId: number;
+  unidadId?: number; // Unidad de negocio
+  unidadNombre?: string;
   nombre: string;
   codigo?: string;
   tipo: TipoTanque;
@@ -55,7 +57,19 @@ export interface TanqueFormData {
   estado: EstadoTanque;
   proveedor?: string;
   observaciones?: string;
+  unidadId?: number;
   activo: boolean;
+}
+
+/**
+ * Filtros para tanques
+ */
+export interface TanqueFilters {
+  search?: string;
+  tipo?: TipoTanque;
+  estado?: EstadoTanque;
+  unidadId?: number;
+  activo?: boolean;
 }
 
 /**
@@ -88,7 +102,7 @@ export function calcularPorcentajeStock(tanque: Tanque): number {
  */
 export function getNivelAlerta(tanque: Tanque): NivelAlerta {
   const porcentaje = calcularPorcentajeStock(tanque);
-  
+
   if (porcentaje <= 5) return "vacio";
   if (porcentaje <= 15) return "critico";
   if (tanque.stockActual <= tanque.stockMinimo) return "bajo";
@@ -126,4 +140,3 @@ export const ESTADOS_TANQUE: { value: EstadoTanque; label: string }[] = [
   { value: "mantenimiento", label: "En mantenimiento" },
   { value: "fuera_servicio", label: "Fuera de servicio" },
 ];
-

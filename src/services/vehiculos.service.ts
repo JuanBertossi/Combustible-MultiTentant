@@ -4,6 +4,7 @@ import type {
   VehiculoFormData,
   VehiculoConStats,
   VehiculoStats,
+  VehiculoFilters,
   ApiResponse,
   PaginatedResponse,
   PaginationParams,
@@ -11,12 +12,15 @@ import type {
 import { apiClient } from "./api.client";
 
 /**
- * Mock data
+ * Mock data - Vehículos asignados a diferentes unidades
  */
 const MOCK_VEHICULOS: VehiculoConStats[] = [
+  // Vehículos de Campo Norte (unidadId: 1)
   {
     id: 1,
     empresaId: 1,
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
     patente: "ABC123",
     marca: "Ford",
     modelo: "Cargo 1722",
@@ -42,35 +46,10 @@ const MOCK_VEHICULOS: VehiculoConStats[] = [
     choferNombre: "Juan Pérez",
   },
   {
-    id: 2,
-    empresaId: 1,
-    patente: "XYZ789",
-    marca: "Toyota",
-    modelo: "Hilux",
-    anio: 2022,
-    tipo: "pickup",
-    tipoCombustible: "diesel",
-    capacidadTanque: 80,
-    kmActual: 45000,
-    consumoPromedio: 8.5,
-    estado: "activo",
-    choferAsignadoId: 2,
-    activo: true,
-    createdAt: "2024-03-20T08:00:00Z",
-    updatedAt: "2024-12-02T10:15:00Z",
-    stats: {
-      totalLitros: 5200,
-      totalCosto: 4420000,
-      totalEventos: 85,
-      ultimaCarga: "2024-12-03T14:45:00Z",
-      consumoPromedio: 8.5,
-      eficienciaKmPorLitro: 11.8,
-    },
-    choferNombre: "María González",
-  },
-  {
     id: 3,
     empresaId: 1,
+    unidadId: 1,
+    unidadNombre: "Campo Norte",
     patente: "AAA111",
     marca: "John Deere",
     modelo: "6130J",
@@ -93,6 +72,63 @@ const MOCK_VEHICULOS: VehiculoConStats[] = [
       eficienciaLitrosPorHora: 12,
     },
   },
+  // Vehículos de Campo Sur (unidadId: 2)
+  {
+    id: 2,
+    empresaId: 1,
+    unidadId: 2,
+    unidadNombre: "Campo Sur",
+    patente: "XYZ789",
+    marca: "Toyota",
+    modelo: "Hilux",
+    anio: 2022,
+    tipo: "pickup",
+    tipoCombustible: "diesel",
+    capacidadTanque: 80,
+    kmActual: 45000,
+    consumoPromedio: 8.5,
+    estado: "activo",
+    choferAsignadoId: 2,
+    activo: true,
+    createdAt: "2024-03-20T08:00:00Z",
+    updatedAt: "2024-12-02T10:15:00Z",
+    stats: {
+      totalLitros: 5200,
+      totalCosto: 4420000,
+      totalEventos: 85,
+      ultimaCarga: "2024-12-03T14:45:00Z",
+      consumoPromedio: 8.5,
+      eficienciaKmPorLitro: 11.8,
+    },
+    choferNombre: "María García",
+  },
+  {
+    id: 4,
+    empresaId: 1,
+    unidadId: 2,
+    unidadNombre: "Campo Sur",
+    patente: "DEF456",
+    marca: "Massey Ferguson",
+    modelo: "MF 4708",
+    anio: 2023,
+    tipo: "tractor",
+    tipoCombustible: "diesel",
+    capacidadTanque: 180,
+    horasActual: 1200,
+    consumoPromedio: 10,
+    estado: "activo",
+    activo: true,
+    createdAt: "2024-05-15T08:00:00Z",
+    updatedAt: "2024-12-01T11:00:00Z",
+    stats: {
+      totalLitros: 12000,
+      totalCosto: 10200000,
+      totalEventos: 120,
+      ultimaCarga: "2024-12-04T07:00:00Z",
+      consumoPromedio: 10,
+      eficienciaLitrosPorHora: 10,
+    },
+  },
 ];
 
 const USE_MOCK = true;
@@ -101,16 +137,21 @@ class VehiculosService {
   private mockData = [...MOCK_VEHICULOS];
 
   /**
-   * Listar vehículos
+   * Listar vehículos con filtro por unidad
    */
   async list(
     empresaId: number,
-    params?: PaginationParams & { search?: string; tipo?: string; estado?: string }
+    params?: PaginationParams & VehiculoFilters
   ): Promise<PaginatedResponse<VehiculoConStats>> {
     if (USE_MOCK) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       
       let filtered = this.mockData.filter((v) => v.empresaId === empresaId);
+
+      // Filtrar por unidad de negocio
+      if (params?.unidadId) {
+        filtered = filtered.filter((v) => v.unidadId === params.unidadId);
+      }
 
       if (params?.search) {
         const search = params.search.toLowerCase();

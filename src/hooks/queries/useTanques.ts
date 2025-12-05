@@ -1,26 +1,38 @@
 // src/hooks/queries/useTanques.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tanquesService } from "@/services";
-import type { TanqueFormData, PaginationParams } from "@/types";
+import { useAuthStore } from "@/stores/auth.store";
+import { useUnidadIdFilter } from "@/hooks/useUnidadFilterLogic";
+import type { TanqueFormData, TanqueFilters, PaginationParams } from "@/types";
 import { toast } from "sonner";
 
 export const tanquesKeys = {
   all: ["tanques"] as const,
   lists: () => [...tanquesKeys.all, "list"] as const,
-  list: (empresaId: number, params?: PaginationParams & { search?: string }) =>
+  list: (empresaId: number, params?: PaginationParams & TanqueFilters) =>
     [...tanquesKeys.lists(), empresaId, params] as const,
   details: () => [...tanquesKeys.all, "detail"] as const,
   detail: (id: number) => [...tanquesKeys.details(), id] as const,
   movimientos: (tanqueId: number) => [...tanquesKeys.all, "movimientos", tanqueId] as const,
 };
 
-export function useTanques(
-  empresaId: number,
-  params?: PaginationParams & { search?: string; tipo?: string; estado?: string }
-) {
+/**
+ * Hook para listar tanques con filtro automático por unidad
+ */
+export function useTanques(params?: PaginationParams & TanqueFilters) {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
+  const unidadIdFilter = useUnidadIdFilter();
+
+  // Combinar filtros pasados con el filtro de unidad
+  const fullParams = {
+    ...params,
+    unidadId: params?.unidadId ?? unidadIdFilter,
+  };
+
   return useQuery({
-    queryKey: tanquesKeys.list(empresaId, params),
-    queryFn: () => tanquesService.list(empresaId, params),
+    queryKey: tanquesKeys.list(empresaId, fullParams),
+    queryFn: () => tanquesService.list(empresaId, fullParams),
     enabled: empresaId > 0,
     staleTime: 1000 * 60 * 5,
   });
@@ -43,8 +55,10 @@ export function useTanqueMovimientos(tanqueId: number, params?: PaginationParams
   });
 }
 
-export function useCreateTanque(empresaId: number) {
+export function useCreateTanque() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
 
   return useMutation({
     mutationFn: (data: TanqueFormData) => tanquesService.create(empresaId, data),

@@ -18,6 +18,8 @@ export type OrigenEvento = "whatsapp" | "web" | "app" | "importacion";
 export interface Evento {
   id: number;
   empresaId: number;
+  unidadId?: number; // Unidad de negocio donde ocurrió el evento
+  unidadNombre?: string;
   vehiculoId: number;
   choferId: number;
   surtidorId?: number;
@@ -89,6 +91,7 @@ export interface EventoFormData {
  */
 export interface EventoFilters {
   empresaId?: number;
+  unidadId?: number; // Filtrar por unidad de negocio
   vehiculoId?: number;
   choferId?: number;
   surtidorId?: number;
@@ -182,7 +185,11 @@ export function validarEvento(
 /**
  * Opciones de estado para selects
  */
-export const ESTADOS_EVENTO: { value: EstadoEvento; label: string; color: string }[] = [
+export const ESTADOS_EVENTO: {
+  value: EstadoEvento;
+  label: string;
+  color: string;
+}[] = [
   { value: "pendiente", label: "Pendiente", color: "#f59e0b" },
   { value: "validado", label: "Validado", color: "#10b981" },
   { value: "rechazado", label: "Rechazado", color: "#ef4444" },
@@ -194,4 +201,3 @@ export const ESTADOS_EVENTO: { value: EstadoEvento; label: string; color: string
 export function getEstadoColor(estado: EstadoEvento): string {
   return ESTADOS_EVENTO.find((e) => e.value === estado)?.color || "#999";
 }
-

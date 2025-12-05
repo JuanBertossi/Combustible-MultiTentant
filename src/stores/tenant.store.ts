@@ -8,6 +8,7 @@ import type {
   EmpresaTheme,
   EmpresaPolicies,
 } from "@/types";
+import { ROLE_PERMISSIONS } from "@/types";
 import { authService, empresasService } from "@/services";
 import { toast } from "sonner";
 
@@ -171,37 +172,13 @@ export const useTenantStore = create<TenantState>()(
         }
       },
 
-      // Has Permission
+      // Has Permission (usa ROLE_PERMISSIONS centralizado)
       hasPermission: (permission: Permission) => {
         const user = get().user;
         if (!user) return false;
 
-        const rolePermissions: Record<string, Permission[]> = {
-          admin: [
-            "eventos:crear",
-            "eventos:editar",
-            "eventos:eliminar",
-            "eventos:validar",
-            "eventos:ver",
-            "vehiculos:gestionar",
-            "usuarios:gestionar",
-            "reportes:ver",
-            "reportes:exportar",
-            "configuracion:editar",
-          ],
-          supervisor: [
-            "eventos:crear",
-            "eventos:editar",
-            "eventos:validar",
-            "eventos:ver",
-            "reportes:ver",
-            "reportes:exportar",
-          ],
-          operador: ["eventos:crear", "eventos:ver"],
-          auditor: ["eventos:ver", "reportes:ver", "reportes:exportar"],
-        };
-
-        return rolePermissions[user.role]?.includes(permission) ?? false;
+        // Usa el mapeo centralizado de types/auth.ts
+        return ROLE_PERMISSIONS[user.role]?.includes(permission) ?? false;
       },
 
       // Has Role

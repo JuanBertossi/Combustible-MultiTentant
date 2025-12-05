@@ -1,14 +1,20 @@
 // src/hooks/queries/useVehiculos.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vehiculosService } from "@/services";
-import type { VehiculoFormData, PaginationParams } from "@/types";
+import { useAuthStore } from "@/stores/auth.store";
+import { useUnidadIdFilter } from "@/hooks/useUnidadFilterLogic";
+import type {
+  VehiculoFormData,
+  VehiculoFilters,
+  PaginationParams,
+} from "@/types";
 import { toast } from "sonner";
 
 // Query Keys
 export const vehiculosKeys = {
   all: ["vehiculos"] as const,
   lists: () => [...vehiculosKeys.all, "list"] as const,
-  list: (empresaId: number, params?: PaginationParams & { search?: string }) =>
+  list: (empresaId: number, params?: PaginationParams & VehiculoFilters) =>
     [...vehiculosKeys.lists(), empresaId, params] as const,
   details: () => [...vehiculosKeys.all, "detail"] as const,
   detail: (id: number) => [...vehiculosKeys.details(), id] as const,
@@ -16,15 +22,22 @@ export const vehiculosKeys = {
 };
 
 /**
- * Hook para listar vehículos
+ * Hook para listar vehículos con filtro automático por unidad
  */
-export function useVehiculos(
-  empresaId: number,
-  params?: PaginationParams & { search?: string; tipo?: string; estado?: string }
-) {
+export function useVehiculos(params?: PaginationParams & VehiculoFilters) {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
+  const unidadIdFilter = useUnidadIdFilter();
+
+  // Combinar filtros pasados con el filtro de unidad
+  const fullParams = {
+    ...params,
+    unidadId: params?.unidadId ?? unidadIdFilter,
+  };
+
   return useQuery({
-    queryKey: vehiculosKeys.list(empresaId, params),
-    queryFn: () => vehiculosService.list(empresaId, params),
+    queryKey: vehiculosKeys.list(empresaId, fullParams),
+    queryFn: () => vehiculosService.list(empresaId, fullParams),
     enabled: empresaId > 0,
     staleTime: 1000 * 60 * 5,
   });
@@ -56,11 +69,14 @@ export function useVehiculoStats(id: number) {
 /**
  * Hook para crear vehículo
  */
-export function useCreateVehiculo(empresaId: number) {
+export function useCreateVehiculo() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId ?? 0;
 
   return useMutation({
-    mutationFn: (data: VehiculoFormData) => vehiculosService.create(empresaId, data),
+    mutationFn: (data: VehiculoFormData) =>
+      vehiculosService.create(empresaId, data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: vehiculosKeys.lists() });
       toast.success(response.message || "Vehículo creado exitosamente");
@@ -78,8 +94,13 @@ export function useUpdateVehiculo() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<VehiculoFormData> }) =>
-      vehiculosService.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<VehiculoFormData>;
+    }) => vehiculosService.update(id, data),
     onSuccess: (response, { id }) => {
       queryClient.invalidateQueries({ queryKey: vehiculosKeys.lists() });
       queryClient.invalidateQueries({ queryKey: vehiculosKeys.detail(id) });
@@ -116,11 +137,18 @@ export function useAsignarChofer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ vehiculoId, choferId }: { vehiculoId: number; choferId: number | null }) =>
-      vehiculosService.asignarChofer(vehiculoId, choferId),
+    mutationFn: ({
+      vehiculoId,
+      choferId,
+    }: {
+      vehiculoId: number;
+      choferId: number | null;
+    }) => vehiculosService.asignarChofer(vehiculoId, choferId),
     onSuccess: (response, { vehiculoId }) => {
       queryClient.invalidateQueries({ queryKey: vehiculosKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehiculosKeys.detail(vehiculoId) });
+      queryClient.invalidateQueries({
+        queryKey: vehiculosKeys.detail(vehiculoId),
+      });
       toast.success(response.message || "Chofer asignado");
     },
     onError: (error: Error) => {
@@ -128,4 +156,3 @@ export function useAsignarChofer() {
     },
   });
 }
-
